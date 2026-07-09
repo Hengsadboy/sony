@@ -14,6 +14,7 @@ class User(Base):
     name = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
     status = Column(String, default="Pending")  # Pending, Approved
+    language = Column(String, default="en")     # en, km
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     # Relationships

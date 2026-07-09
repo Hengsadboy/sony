@@ -156,15 +156,27 @@ async def approve_registration(
     
     # Send telegram message to user
     try:
-        user_message = (
-            f"🎉 *Trading Account Approved!*\n\n"
-            f"Your request for a *{acc.account_type} Account* has been approved by the Admin.\n\n"
-            f"🔑 *Account Details:*\n"
-            f"• Account Number: `{account_number}`\n"
-            f"• Login: `{login_details}`\n"
-            f"• Password: `{password}`\n\n"
-            f"You can now deposit funds to begin trading."
-        )
+        lang = user.language if (user and user.language) else "en"
+        if lang == "km":
+            user_message = (
+                f"🎉 *គណនីជួញដូរត្រូវបានអនុម័ត!*\n\n"
+                f"សំណើសម្រាប់ *គណនី {acc.account_type}* របស់អ្នកត្រូវបានអនុម័តដោយ Admin។\n\n"
+                f"🔑 *ព័ត៌មានលម្អិតគណនី:*\n"
+                f"• លេខគណនី: `{account_number}`\n"
+                f"• ឈ្មោះចូល: `{login_details}`\n"
+                f"• លេខសម្ងាត់: `{password}`\n\n"
+                f"ឥឡូវនេះអ្នកអាចដាក់ប្រាក់ដើម្បីចាប់ផ្តើមជួញដូរបានហើយ។"
+            )
+        else:
+            user_message = (
+                f"🎉 *Trading Account Approved!*\n\n"
+                f"Your request for a *{acc.account_type} Account* has been approved by the Admin.\n\n"
+                f"🔑 *Account Details:*\n"
+                f"• Account Number: `{account_number}`\n"
+                f"• Login: `{login_details}`\n"
+                f"• Password: `{password}`\n\n"
+                f"You can now deposit funds to begin trading."
+            )
         await bot.send_message(chat_id=acc.user_telegram_id, text=user_message, parse_mode="Markdown")
     except Exception as e:
         print(f"Error sending message to user: {e}")
@@ -192,11 +204,20 @@ async def approve_deposit(
     
     # Send telegram message to user
     try:
-        user_message = (
-            f"💰 *Deposit Approved!*\n\n"
-            f"Your deposit of *${amount:,.2f}* into account *#{acc.account_number}* has been approved and credited.\n"
-            f"Current Balance: *${acc.balance:,.2f}*"
-        )
+        user = db.query(User).filter(User.telegram_id == tx.user_telegram_id).first()
+        lang = user.language if (user and user.language) else "en"
+        if lang == "km":
+            user_message = (
+                f"💰 *ការដាក់ប្រាក់ត្រូវបានអនុម័ត!*\n\n"
+                f"ការដាក់ប្រាក់ចំនួន *${amount:,.2f}* ទៅក្នុងគណនី *#{acc.account_number}* របស់អ្នកត្រូវបានអនុម័ត និងបញ្ចូលសមតុល្យរួចរាល់ហើយ។\n"
+                f"សមតុល្យបច្ចុប្បន្ន: *${acc.balance:,.2f}*"
+            )
+        else:
+            user_message = (
+                f"💰 *Deposit Approved!*\n\n"
+                f"Your deposit of *${amount:,.2f}* into account *#{acc.account_number}* has been approved and credited.\n"
+                f"Current Balance: *${acc.balance:,.2f}*"
+            )
         await bot.send_message(chat_id=tx.user_telegram_id, text=user_message, parse_mode="Markdown")
     except Exception as e:
         print(f"Error sending message to user: {e}")
@@ -214,11 +235,20 @@ async def reject_deposit(tx_id: int, db: Session = Depends(get_db)):
     
     # Send telegram message to user
     try:
-        user_message = (
-            f"❌ *Deposit Rejected*\n\n"
-            f"Your deposit request has been rejected by the admin. "
-            f"Please ensure you uploaded the correct proof of transfer, or contact support."
-        )
+        user = db.query(User).filter(User.telegram_id == tx.user_telegram_id).first()
+        lang = user.language if (user and user.language) else "en"
+        if lang == "km":
+            user_message = (
+                f"❌ *ការដាក់ប្រាក់ត្រូវបានបដិសេធ*\n\n"
+                f"សំណើដាក់ប្រាក់របស់អ្នកត្រូវបានបដិសេធដោយ Admin។ "
+                f"សូមប្រាកដថាអ្នកបានផ្ញើបង្កាន់ដៃផ្ទេរប្រាក់ត្រឹមត្រូវ ឬទាក់ទងផ្នែកគាំទ្រ។"
+            )
+        else:
+            user_message = (
+                f"❌ *Deposit Rejected*\n\n"
+                f"Your deposit request has been rejected by the admin. "
+                f"Please ensure you uploaded the correct proof of transfer, or contact support."
+            )
         await bot.send_message(chat_id=tx.user_telegram_id, text=user_message, parse_mode="Markdown")
     except Exception as e:
         print(f"Error sending message to user: {e}")
@@ -238,11 +268,20 @@ async def approve_withdrawal(tx_id: int, db: Session = Depends(get_db)):
     
     # Send telegram message to user
     try:
-        user_message = (
-            f"💸 *Withdrawal Approved!*\n\n"
-            f"Your withdrawal of *${tx.amount:,.2f}* from account *#{acc.account_number}* has been approved and paid out.\n"
-            "Please check your bank account."
-        )
+        user = db.query(User).filter(User.telegram_id == tx.user_telegram_id).first()
+        lang = user.language if (user and user.language) else "en"
+        if lang == "km":
+            user_message = (
+                f"💸 *ការដកប្រាក់ត្រូវបានអនុម័ត!*\n\n"
+                f"ការដកប្រាក់ចំនួន *${tx.amount:,.2f}* ពីគណនី *#{acc.account_number}* របស់អ្នកត្រូវបានអនុម័ត និងផ្ទេររួចរាល់ហើយ។\n"
+                "សូមពិនិត្យមើលគណនីធនាគាររបស់អ្នក។"
+            )
+        else:
+            user_message = (
+                f"💸 *Withdrawal Approved!*\n\n"
+                f"Your withdrawal of *${tx.amount:,.2f}* from account *#{acc.account_number}* has been approved and paid out.\n"
+                "Please check your bank account."
+            )
         await bot.send_message(chat_id=tx.user_telegram_id, text=user_message, parse_mode="Markdown")
     except Exception as e:
         print(f"Error sending message to user: {e}")
@@ -261,10 +300,18 @@ async def reject_withdrawal(tx_id: int, db: Session = Depends(get_db)):
     
     # Send telegram message to user
     try:
-        user_message = (
-            f"❌ *Withdrawal Rejected*\n\n"
-            f"Your withdrawal request of *${tx.amount:,.2f}* has been rejected by the admin."
-        )
+        user = db.query(User).filter(User.telegram_id == tx.user_telegram_id).first()
+        lang = user.language if (user and user.language) else "en"
+        if lang == "km":
+            user_message = (
+                f"❌ *ការដកប្រាក់ត្រូវបានបដិសេធ*\n\n"
+                f"សំណើដកប្រាក់ចំនួន *${tx.amount:,.2f}* របស់អ្នកត្រូវបានបដិសេធដោយ Admin។"
+            )
+        else:
+            user_message = (
+                f"❌ *Withdrawal Rejected*\n\n"
+                f"Your withdrawal request of *${tx.amount:,.2f}* has been rejected by the admin."
+            )
         await bot.send_message(chat_id=tx.user_telegram_id, text=user_message, parse_mode="Markdown")
     except Exception as e:
         print(f"Error sending message to user: {e}")
@@ -354,13 +401,24 @@ async def approve_password_reset(
     
     # Send Telegram message to user with the new login details
     try:
-        user_message = (
-            f"🔑 *Password Reset Completed*\n\n"
-            f"Your request for *{acc.account_type} Account #{acc.account_number}* has been processed.\n"
-            f"Here are your new login details:\n"
-            f"• Login: `{acc.login}`\n"
-            f"• New Password: `{new_password}`"
-        )
+        user = db.query(User).filter(User.telegram_id == acc.user_telegram_id).first()
+        lang = user.language if (user and user.language) else "en"
+        if lang == "km":
+            user_message = (
+                f"🔑 *ការផ្លាស់ប្តូរលេខសម្ងាត់ត្រូវបានបញ្ចប់*\n\n"
+                f"សំណើសម្រាប់ *គណនី {acc.account_type} #{acc.account_number}* របស់អ្នកត្រូវបានដំណើរការរួចរាល់ហើយ។\n"
+                f"ព័ត៌មានគណនីថ្មីរបស់អ្នក៖\n"
+                f"• ឈ្មោះចូល: `{acc.login}`\n"
+                f"• លេខសម្ងាត់ថ្មី: `{new_password}`"
+            )
+        else:
+            user_message = (
+                f"🔑 *Password Reset Completed*\n\n"
+                f"Your request for *{acc.account_type} Account #{acc.account_number}* has been processed.\n"
+                f"Here are your new login details:\n"
+                f"• Login: `{acc.login}`\n"
+                f"• New Password: `{new_password}`"
+            )
         await bot.send_message(chat_id=acc.user_telegram_id, text=user_message, parse_mode="Markdown")
     except Exception as e:
         print(f"Error sending password reset message to user: {e}")
