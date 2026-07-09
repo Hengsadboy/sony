@@ -39,8 +39,8 @@
                                 <td><span class="pill pill-approved">{{ acc.account_type }}</span></td>
                                 <td>
                                     <form action="/approve-registration/{{ acc.id }}" method="POST" style="display: flex; gap: 0.5rem; align-items: center; max-width: 600px;">
-                                        <input type="text" name="account_number" placeholder="Account Number" class="form-input" required style="margin-bottom: 0; flex: 1;">
-                                        <input type="text" name="login_details" placeholder="Login (e.g. Server)" class="form-input" required style="margin-bottom: 0; flex: 1;">
+                                        <input type="text" name="account_number" placeholder="Account ID" class="form-input" required style="margin-bottom: 0; flex: 1;">
+                                        <input type="text" name="login_details" placeholder="Server" class="form-input" required style="margin-bottom: 0; flex: 1;">
                                         <input type="text" name="password" placeholder="Password" class="form-input" required style="margin-bottom: 0; flex: 1;">
                                         <button type="submit" class="btn-success">Confirm</button>
                                     </form>
@@ -208,8 +208,8 @@
                         <tr>
                             <th>User</th>
                             <th>Telegram ID</th>
-                            <th>Account Num</th>
-                            <th>Login / Server</th>
+                            <th>Account ID</th>
+                            <th>Server</th>
                             <th>Password</th>
                             <th>Type</th>
                             <th>Balance</th>
