@@ -205,6 +205,16 @@ async def register_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             await send_admin_notification(context.application, alert)
             
+            # Notify specific group ID
+            try:
+                await context.application.bot.send_message(
+                    chat_id="-5536620816",
+                    text=alert,
+                    parse_mode="Markdown"
+                )
+            except Exception as e:
+                logger.error(f"Error sending account request notification to group -5536620816: {e}")
+            
             await query.message.reply_text(
                 "✅ Your request for a new trading account has been submitted!\n"
                 "Our admin will assign your login credentials shortly. You will be notified here.",
@@ -266,6 +276,16 @@ async def register_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Please open the Web Admin Panel to approve the user and assign credentials."
         )
         await send_admin_notification(context.application, alert)
+        
+        # Notify specific group ID
+        try:
+            await context.application.bot.send_message(
+                chat_id="-5536620816",
+                text=alert,
+                parse_mode="Markdown"
+            )
+        except Exception as e:
+            logger.error(f"Error sending registration notification to group -5536620816: {e}")
         
         await update.message.reply_text(
             "✅ Registration submitted successfully!\n"
