@@ -244,66 +244,106 @@
         </div>
     </div>
 
-    <!-- Transaction History Card -->
-    <div class="card" style="margin-top: 2rem;">
-        <div class="card-header">
-            <h2>📜 Transaction History (Approved & Rejected)</h2>
-        </div>
-        <div class="table-container">
-            {% if not transaction_history %}
-                <p style="color: var(--text-muted); font-style: italic; padding: 1rem 0;">No past transactions found.</p>
-            {% else %}
-                <table>
-                    <thead>
-                        <tr>
-                            <th>User Name</th>
-                            <th>Telegram ID</th>
-                            <th>Trading Account</th>
-                            <th>Type</th>
-                            <th>Amount</th>
-                            <th>Receipt</th>
-                            <th>Status</th>
-                            <th>Details</th>
-                            <th>Date & Time</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for tx in transaction_history %}
+    <!-- History grids cols 2 -->
+    <div class="grid-cols-2" style="margin-top: 2rem;">
+        <!-- Deposit History Card -->
+        <div class="glass-panel card">
+            <div class="card-header">
+                <h2 class="section-title" style="border-left-color: var(--success-color); margin-bottom: 1rem;">📥 Deposit History</h2>
+            </div>
+            <div class="table-container">
+                {% if not history_deposits %}
+                    <p style="color: var(--text-muted); font-style: italic; padding: 1rem 0;">No past deposits found.</p>
+                {% else %}
+                    <table>
+                        <thead>
                             <tr>
-                                <td>{{ tx.user.name }}</td>
-                                <td><code>{{ tx.user_telegram_id }}</code></td>
-                                <td><code>{{ tx.account.account_type }} (#{{ tx.account.account_number }})</code></td>
-                                <td>
-                                    <span class="badge" style="padding: 0.25rem 0.5rem; font-weight: bold; border-radius: 4px; font-size: 0.8rem; background: {% if tx.type == 'Deposit' %}rgba(46, 204, 113, 0.15); color: #2ecc71;{% else %}rgba(231, 76, 60, 0.15); color: #e74c3c;{% endif %}">
-                                        {{ tx.type }}
-                                    </span>
-                                </td>
-                                <td style="font-weight: bold;">${{ tx.amount }}</td>
-                                <td>
-                                    {% if tx.receipt_path %}
-                                        <button onclick="openModal('/static/uploads/{{ tx.receipt_path }}')" class="btn-info" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">View Receipt</button>
-                                    {% else %}
-                                        <span style="color: var(--text-muted);">N/A</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <span style="font-weight: bold; color: {% if tx.status == 'Approved' %}#2ecc71{% else %}#e74c3c{% endif %};">
-                                        {{ tx.status }}
-                                    </span>
-                                </td>
-                                <td>
-                                    {% if tx.details %}
-                                        <small style="color: var(--text-muted);">{{ tx.details }}</small>
-                                    {% else %}
-                                        <span style="color: var(--text-muted);">-</span>
-                                    {% endif %}
-                                </td>
-                                <td><small>{{ tx.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small></td>
+                                <th>User</th>
+                                <th>Account</th>
+                                <th>Amount</th>
+                                <th>Receipt</th>
+                                <th>Status</th>
+                                <th>Date</th>
                             </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            {% endif %}
+                        </thead>
+                        <tbody>
+                            {% for tx in history_deposits %}
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 600;">{{ tx.user.name }}</div>
+                                        <div style="font-size: 0.8rem; color: var(--text-muted);">TG: <code>{{ tx.user_telegram_id }}</code></div>
+                                    </td>
+                                    <td><code>#{{ tx.account.account_number }}</code></td>
+                                    <td style="font-weight: bold; color: var(--success-color);">${{ tx.amount }}</td>
+                                    <td>
+                                        {% if tx.receipt_path %}
+                                            <button onclick="openModal('/static/uploads/{{ tx.receipt_path }}')" class="btn-info" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">View</button>
+                                        {% else %}
+                                            <span style="color: var(--text-muted);">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span style="font-weight: bold; color: {% if tx.status == 'Approved' %}#2ecc71{% else %}#e74c3c{% endif %}; font-size: 0.85rem;">
+                                            {{ tx.status }}
+                                        </span>
+                                    </td>
+                                    <td><small>{{ tx.created_at.strftime('%Y-%m-%d %H:%M') }}</small></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Withdrawal History Card -->
+        <div class="glass-panel card">
+            <div class="card-header">
+                <h2 class="section-title" style="border-left-color: var(--danger-color); margin-bottom: 1rem;">📤 Withdrawal History</h2>
+            </div>
+            <div class="table-container">
+                {% if not history_withdrawals %}
+                    <p style="color: var(--text-muted); font-style: italic; padding: 1rem 0;">No past withdrawals found.</p>
+                {% else %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Account</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Details</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tx in history_withdrawals %}
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 600;">{{ tx.user.name }}</div>
+                                        <div style="font-size: 0.8rem; color: var(--text-muted);">TG: <code>{{ tx.user_telegram_id }}</code></div>
+                                    </td>
+                                    <td><code>#{{ tx.account.account_number }}</code></td>
+                                    <td style="font-weight: bold; color: var(--danger-color);">${{ tx.amount }}</td>
+                                    <td>
+                                        <span style="font-weight: bold; color: {% if tx.status == 'Approved' %}#2ecc71{% else %}#e74c3c{% endif %}; font-size: 0.85rem;">
+                                            {{ tx.status }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if tx.details %}
+                                            <small style="color: var(--text-muted); font-size: 0.75rem;">{{ tx.details }}</small>
+                                        {% else %}
+                                            <span style="color: var(--text-muted);">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><small>{{ tx.created_at.strftime('%Y-%m-%d %H:%M') }}</small></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>

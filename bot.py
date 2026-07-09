@@ -182,8 +182,16 @@ async def register_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ],
         [InlineKeyboardButton("❌ Cancel", callback_data="cancel_conv")],
     ]
+    info_text = (
+        "📝 *How to Register:*\n"
+        "1. Choose your account type below (Cent or USD).\n"
+        "2. Provide your **Full Name**.\n"
+        "3. Provide your **Email Address**.\n\n"
+        "Our admin team will verify your request and issue your MT4/MT5 login details shortly!\n\n"
+        "📝 *Choose your trading account type:*"
+    )
     await message_target.reply_text(
-        "📝 *Choose your trading account type:*",
+        info_text,
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
     )
@@ -350,8 +358,16 @@ async def deposit_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard.append([InlineKeyboardButton(label, callback_data=f"depacc_{acc.id}")])
         keyboard.append([InlineKeyboardButton("❌ Cancel", callback_data="cancel_conv")])
         
+        info_text = (
+            "💰 *How to Deposit:*\n"
+            "1. Select the approved trading account from the list below.\n"
+            "2. Enter the amount you want to deposit ($5 min for Cent, $10 min for USD).\n"
+            "3. Scan the official KHQR code to send the funds via your banking app.\n"
+            "4. Upload the screenshot of your payment receipt.\n\n"
+            "💰 *Select the account you want to deposit into:*"
+        )
         await message_target.reply_text(
-            "💰 *Select the account you want to deposit into:*",
+            info_text,
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="Markdown"
         )
@@ -558,8 +574,18 @@ async def withdraw_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard.append([InlineKeyboardButton(label, callback_data=f"withacc_{acc.id}")])
         keyboard.append([InlineKeyboardButton("❌ Cancel", callback_data="cancel_conv")])
         
+        info_text = (
+            "💸 *How to Withdraw:*\n"
+            "1. Select the account you want to withdraw from.\n"
+            "2. Enter the withdrawal amount ($5 min for Cent, $10 min for USD).\n"
+            "3. Enter the Bank Name, Account Number, and Account Name.\n\n"
+            "⚠️ *IMPORTANT WARNING:*\n"
+            "The **Bank Account Name** and your **Trading Profile Name** *must match exactly*!\n"
+            "If they do not match, the withdrawal request *will be cancelled* and the funds will be *lost with no refund*!\n\n"
+            "💸 *Select the account to withdraw from:*"
+        )
         await message_target.reply_text(
-            "💸 *Select the account to withdraw from:*",
+            info_text,
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="Markdown"
         )
@@ -642,6 +668,20 @@ async def withdraw_get_acc_name(update: Update, context: ContextTypes.DEFAULT_TY
         acc = db.query(TradingAccount).filter(TradingAccount.id == acc_id).first()
         db_user = db.query(User).filter(User.telegram_id == telegram_id).first()
         
+        # Verify that the provided Bank Account Name matches the user's trading profile name
+        clean_provided_name = " ".join(acc_name.lower().split())
+        clean_profile_name = " ".join(db_user.name.lower().split())
+        if clean_provided_name != clean_profile_name:
+            await update.message.reply_text(
+                f"❌ *Withdrawal Rejected!*\n\n"
+                f"The provided Bank Account Name (*{acc_name}*) does not match your trading profile name (*{db_user.name}*).\n"
+                "To prevent fraud, withdrawal bank accounts must belong to the registered user. "
+                "This request has been cancelled and no funds were deducted.",
+                reply_markup=persistent_markup,
+                parse_mode="Markdown"
+            )
+            return ConversationHandler.END
+            
         # Deduct balance temporarily (escrow status) so they can't double withdraw
         acc.balance -= amount
         
@@ -697,10 +737,15 @@ async def withdraw_get_acc_name(update: Update, context: ContextTypes.DEFAULT_TY
 
 # --- FORGOT PASSWORD FLOW ---
 async def forgot_password_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message_target = update.message if update.message else update.callback_query.message
+    info_text = (
+        "🔑 *How to Reset Password:*\n"
+        "1. Enter the registered email address of your profile.\n"
+        "2. Enter your MT4/MT5 Trading Account ID / Number.\n\n"
+        "Our admin team will reset the password and contact you directly in this chat with the new login details!\n\n"
+        "🔑 Please enter the *Email Address* linked to your trading account:"
+    )
     await message_target.reply_text(
-        "🔑 *Forgot Password Request*\n\n"
-        "Please enter the *Email Address* linked to your trading account:",
+        info_text,
         parse_mode="Markdown"
     )
     return FORGOT_GET_EMAIL

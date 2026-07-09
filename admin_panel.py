@@ -101,9 +101,13 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     pending_resets = db.query(PasswordResetRequest).filter(PasswordResetRequest.status == "Pending").all()
     
     # Fetch historical processed transactions (Approved or Rejected)
-    transaction_history = db.query(Transaction).filter(
+    history_txs = db.query(Transaction).filter(
         Transaction.status.in_(["Approved", "Rejected"])
     ).order_by(Transaction.created_at.desc()).all()
+    
+    # Split historical transactions into separate lists for deposits and withdrawals
+    history_deposits = [tx for tx in history_txs if tx.type == "Deposit"]
+    history_withdrawals = [tx for tx in history_txs if tx.type == "Withdrawal"]
     
     return templates.TemplateResponse(
         request=request,
@@ -114,7 +118,8 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
             "pending_withdrawals": pending_withdrawals,
             "all_accounts": all_accounts,
             "pending_resets": pending_resets,
-            "transaction_history": transaction_history
+            "history_deposits": history_deposits,
+            "history_withdrawals": history_withdrawals
         }
     )
 
