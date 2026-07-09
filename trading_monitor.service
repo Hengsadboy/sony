@@ -6,7 +6,7 @@ After=network.target
 Type=simple
 User=ubuntu
 WorkingDirectory=/home/ubuntu/trading
-ExecStart=/usr/bin/python3 mt5_monitor.py
+ExecStart=/home/ubuntu/trading/venv/bin/python mt5_monitor.py
 Restart=always
 RestartSec=5
 
