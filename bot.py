@@ -479,12 +479,14 @@ async def show_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 acc_num = acc.account_number if acc.account_number else "Pending Admin Assign"
                 login = acc.login if acc.login else "Pending"
                 password = acc.password if acc.password else "Pending"
+                balance_label = "Balance" if lang == "en" else "សមតុល្យ"
                 info_text += (
                     f"*{i}. {acc.account_type} Account*\n"
                     f"  • ID: {acc.id}\n"
                     f"  • Account Number: `{acc_num}`\n"
                     f"  • Login Details: `{login}`\n"
                     f"  • Password: `{password}`\n"
+                    f"  • {balance_label}: *${acc.balance:,.2f}*\n"
                     f"  • Status: {acc.status}\n\n"
                 )
         

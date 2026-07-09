@@ -1,0 +1,14 @@
+[Unit]
+Description=MetaTrader 5 Balance Monitoring Service
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/trading
+ExecStart=/usr/bin/python3 mt5_monitor.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
