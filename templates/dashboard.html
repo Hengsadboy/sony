@@ -5,7 +5,8 @@
 {% block body %}
 <header class="glass-panel" style="border-radius: 0; border-left: none; border-right: none; border-top: none;">
     <div class="logo">⚡ Forex Admin Dashboard</div>
-    <div>
+    <div style="display: flex; gap: 1rem; align-items: center;">
+        <a href="/settings" class="btn-primary" style="margin: 0; padding: 0.4rem 1rem; text-decoration: none; font-size: 0.85rem; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); color: white;">⚙️ Settings</a>
         <a href="/logout" class="logout-btn">Logout</a>
     </div>
 </header>
@@ -244,80 +245,7 @@
         </div>
     </div>
 
-    <!-- BOT CONTROL SETTINGS PANEL -->
-    <div class="glass-panel card" style="margin-top: 2rem;">
-        <h2 class="section-title">🤖 Telegram Bot Settings & Broadcasts</h2>
-        
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
-            <!-- Maintenance Mode & Status Toggle -->
-            <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border);">
-                <h3>⚙️ Maintenance Mode</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
-                    When enabled, the bot will block new operations and respond with a maintenance message to all users.
-                </p>
-                <form action="/toggle-maintenance" method="POST" style="display: flex; flex-direction: column; gap: 0.8rem;">
-                    <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <span style="font-weight: bold; color: {% if maintenance_enabled %}var(--danger-color){% else %}var(--success-color){% endif %};">
-                            Status: {% if maintenance_enabled %}🔴 ON (Maintenance){% else %}🟢 OFF (Live){% endif %}
-                        </span>
-                        <input type="hidden" name="enabled" value="{% if maintenance_enabled %}false{% else %}true{% endif %}">
-                        <button type="submit" class="{% if maintenance_enabled %}btn-success{% else %}btn-danger{% endif %}" style="margin: 0; padding: 0.4rem 1rem;">
-                            {% if maintenance_enabled %}Go Live (Turn OFF){% else %}Go Maintenance (Turn ON){% endif %}
-                        </button>
-                    </div>
-                </form>
-            </div>
 
-            <!-- Broadcast Announcement -->
-            <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border);">
-                <h3>📢 Send Global Announcement</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.8rem;">
-                    Sends an official markdown message to all registered bot users.
-                </p>
-                <form action="/broadcast" method="POST" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                    <input type="hidden" name="type" value="announcement">
-                    <textarea name="message" rows="3" class="form-input" placeholder="📢 Important Announcement: ..." required style="font-family: inherit; font-size: 0.85rem;"></textarea>
-                    <button type="submit" class="btn-primary" style="margin: 0; padding: 0.4rem;">Send Announcement</button>
-                </form>
-            </div>
-
-            <!-- Giveaway Broadcaster -->
-            <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border);">
-                <h3>🎁 Send Giveaway Notification</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.8rem;">
-                    Sends a cool styled Giveaway message to all bot users.
-                </p>
-                <form action="/broadcast" method="POST" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                    <input type="hidden" name="type" value="giveaway">
-                    <textarea name="message" rows="3" class="form-input" placeholder="🎁 Cool Giveaway Details: ..." required style="font-family: inherit; font-size: 0.85rem;"></textarea>
-                    <button type="submit" class="btn-primary" style="margin: 0; padding: 0.4rem; background: #e040fb; color: white;">Send Giveaway 🚀</button>
-                </form>
-            </div>
-
-            <!-- Bot Parameters & Settings -->
-            <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border);">
-                <h3>🛠️ Bot Configuration</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.8rem;">
-                    Update Telegram connection details and default payment generation link.
-                </p>
-                <form action="/update-settings" method="POST" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                    <div style="margin-bottom: 0.2rem;">
-                        <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">ABA Pay Link:</label>
-                        <input type="text" name="aba_pay_link" value="{{ aba_pay_link }}" class="form-input" required style="font-size: 0.8rem; margin-bottom: 0; padding: 0.4rem;">
-                    </div>
-                    <div style="margin-bottom: 0.2rem;">
-                        <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Telegram Group ID:</label>
-                        <input type="text" name="telegram_group_id" value="{{ telegram_group_id }}" class="form-input" required style="font-size: 0.8rem; margin-bottom: 0; padding: 0.4rem;">
-                    </div>
-                    <div style="margin-bottom: 0.5rem;">
-                        <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Telegram Bot Token:</label>
-                        <input type="text" name="telegram_bot_token" value="{{ telegram_bot_token }}" class="form-input" required style="font-size: 0.8rem; margin-bottom: 0; padding: 0.4rem;">
-                    </div>
-                    <button type="submit" class="btn-primary" style="margin: 0; padding: 0.4rem; background: #00e676; color: #0a0e1a; font-weight: bold;">Save Config 💾</button>
-                </form>
-            </div>
-        </div>
-    </div>
 
     <!-- History grids cols 2 -->
     <div class="grid-cols-2" style="margin-top: 2rem;">

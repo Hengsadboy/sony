@@ -464,6 +464,45 @@ async def check_updates(db: Session = Depends(get_db)):
     }
 
 
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request, db: Session = Depends(get_db)):
+    try:
+        get_current_admin(request)
+    except HTTPException:
+        return RedirectResponse(url="/login", status_code=303)
+        
+    maintenance = db.query(SystemSetting).filter(SystemSetting.key == "maintenance_mode").first()
+    maintenance_enabled = maintenance and maintenance.value == "true"
+    
+    aba_pay_link_setting = db.query(SystemSetting).filter(SystemSetting.key == "aba_pay_link").first()
+    aba_pay_link = aba_pay_link_setting.value if aba_pay_link_setting else "https://link.payway.com.kh/ABAPAYMu475556i"
+    
+    telegram_group_id_setting = db.query(SystemSetting).filter(SystemSetting.key == "telegram_group_id").first()
+    telegram_group_id = telegram_group_id_setting.value if telegram_group_id_setting else "-5536620816"
+    
+    telegram_bot_token_setting = db.query(SystemSetting).filter(SystemSetting.key == "telegram_bot_token").first()
+    telegram_bot_token = telegram_bot_token_setting.value if telegram_bot_token_setting else ""
+    
+    welcome_msg_en_setting = db.query(SystemSetting).filter(SystemSetting.key == "welcome_msg_en").first()
+    welcome_msg_en = welcome_msg_en_setting.value if welcome_msg_en_setting else "👋 Welcome *{name}* to our *Manual Forex Broker*!"
+    
+    welcome_msg_km_setting = db.query(SystemSetting).filter(SystemSetting.key == "welcome_msg_km").first()
+    welcome_msg_km = welcome_msg_km_setting.value if welcome_msg_km_setting else "👋 សូមស្វាគមន៍ *{name}* មកកាន់ *Manual Forex Broker* របស់យើង!"
+    
+    return templates.TemplateResponse(
+        request=request,
+        name="settings.html",
+        context={
+            "maintenance_enabled": maintenance_enabled,
+            "aba_pay_link": aba_pay_link,
+            "telegram_group_id": telegram_group_id,
+            "telegram_bot_token": telegram_bot_token,
+            "welcome_msg_en": welcome_msg_en,
+            "welcome_msg_km": welcome_msg_km
+        }
+    )
+
+
 @app.post("/toggle-maintenance")
 async def toggle_maintenance(enabled: str = Form(...), db: Session = Depends(get_db)):
     setting = db.query(SystemSetting).filter(SystemSetting.key == "maintenance_mode").first()
@@ -472,7 +511,7 @@ async def toggle_maintenance(enabled: str = Form(...), db: Session = Depends(get
         db.add(setting)
     setting.value = "true" if enabled == "true" else "false"
     db.commit()
-    return RedirectResponse(url="/dashboard", status_code=303)
+    return RedirectResponse(url="/settings", status_code=303)
 
 
 @app.post("/broadcast")
@@ -500,7 +539,7 @@ async def broadcast(
         except Exception as e:
             print(f"Failed to send broadcast to user {u.telegram_id}: {e}")
             
-    return RedirectResponse(url="/dashboard", status_code=303)
+    return RedirectResponse(url="/settings", status_code=303)
 
 
 @app.post("/update-settings")
@@ -509,6 +548,8 @@ async def update_settings(
     aba_pay_link: str = Form(...),
     telegram_group_id: str = Form(...),
     telegram_bot_token: str = Form(...),
+    welcome_msg_en: str = Form(...),
+    welcome_msg_km: str = Form(...),
     db: Session = Depends(get_db)
 ):
     try:
@@ -519,7 +560,9 @@ async def update_settings(
     for key, val in [
         ("aba_pay_link", aba_pay_link),
         ("telegram_group_id", telegram_group_id),
-        ("telegram_bot_token", telegram_bot_token)
+        ("telegram_bot_token", telegram_bot_token),
+        ("welcome_msg_en", welcome_msg_en),
+        ("welcome_msg_km", welcome_msg_km)
     ]:
         setting = db.query(SystemSetting).filter(SystemSetting.key == key).first()
         if not setting:
@@ -528,7 +571,7 @@ async def update_settings(
         setting.value = val.strip()
     db.commit()
     
-    return RedirectResponse(url="/dashboard", status_code=303)
+    return RedirectResponse(url="/settings", status_code=303)
 
 
 if __name__ == "__main__":

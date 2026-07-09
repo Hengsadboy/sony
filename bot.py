@@ -418,7 +418,8 @@ async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     # Send welcome text in selected language with keyboard
     first_name = (query.from_user.first_name or "Trader").replace("*", "").replace("_", "").replace("[", "").replace("`", "")
-    welcome_text = TEXTS["welcome"][lang].format(name=first_name)
+    welcome_template = get_setting(f"welcome_msg_{lang}", TEXTS["welcome"][lang])
+    welcome_text = welcome_template.format(name=first_name)
     persistent_markup = get_persistent_markup(lang)
     
     target_msg = query.message if query.message else update.effective_message

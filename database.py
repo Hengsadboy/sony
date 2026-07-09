@@ -107,6 +107,14 @@ def init_db():
         if not bot_token:
             db.add(SystemSetting(key="telegram_bot_token", value=TELEGRAM_BOT_TOKEN))
             
+        welcome_en = db.query(SystemSetting).filter(SystemSetting.key == "welcome_msg_en").first()
+        if not welcome_en:
+            db.add(SystemSetting(key="welcome_msg_en", value="👋 Welcome *{name}* to our *Manual Forex Broker*!\n\nHere you can register accounts, deposit, withdraw, and check your status completely manually. Our admin team will process your requests quickly.\n\nPlease choose an option from the menu under the chat:"))
+            
+        welcome_km = db.query(SystemSetting).filter(SystemSetting.key == "welcome_msg_km").first()
+        if not welcome_km:
+            db.add(SystemSetting(key="welcome_msg_km", value="👋 សូមស្វាគមន៍ *{name}* មកកាន់ *Manual Forex Broker* របស់យើង!\n\nនៅទីនេះអ្នកអាចចុះឈ្មោះគណនី, ដាក់ប្រាក់, ដកប្រាក់ និងពិនិត្យមើលស្ថានភាពរបស់អ្នកដោយផ្ទាល់។ ក្រុមការងាររបស់យើងនឹងដំណើរការសំណើរបស់អ្នកយ៉ាងរហ័ស។\n\nសូមជ្រើសរើសជម្រើសពីម៉ឺនុយខាងក្រោម:"))
+            
         db.commit()
     except Exception:
         pass
