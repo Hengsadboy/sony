@@ -323,5 +323,31 @@
     function closeModal() {
         document.getElementById('receiptModal').style.display = "none";
     }
+
+    // Auto-refresh Dashboard on updates
+    let currentDashboardState = null;
+
+    async function checkDashboardUpdates() {
+        try {
+            const response = await fetch('/api/check-updates');
+            if (response.ok) {
+                const data = await response.json();
+                const stateStr = JSON.stringify(data);
+                
+                if (currentDashboardState !== null && currentDashboardState !== stateStr) {
+                    // Update detected! Reload page to display changes in real-time.
+                    window.location.reload();
+                }
+                currentDashboardState = stateStr;
+            }
+        } catch (error) {
+            console.error("Error fetching dashboard updates:", error);
+        }
+    }
+
+    // Check for updates every 4 seconds
+    setInterval(checkDashboardUpdates, 4000);
+    // Initial check
+    checkDashboardUpdates();
 </script>
 {% endblock %}

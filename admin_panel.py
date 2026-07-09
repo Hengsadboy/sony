@@ -364,6 +364,20 @@ async def approve_password_reset(
     return RedirectResponse(url="/dashboard", status_code=303)
 
 
+@app.get("/api/check-updates")
+async def check_updates(db: Session = Depends(get_db)):
+    reg_count = db.query(TradingAccount).filter(TradingAccount.status == "Pending").count()
+    tx_count = db.query(Transaction).filter(Transaction.status == "Pending").count()
+    reset_count = db.query(PasswordResetRequest).filter(PasswordResetRequest.status == "Pending").count()
+    active_count = db.query(TradingAccount).filter(TradingAccount.status == "Approved").count()
+    return {
+        "pending_registrations": reg_count,
+        "pending_transactions": tx_count,
+        "pending_resets": reset_count,
+        "active_accounts": active_count
+    }
+
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
