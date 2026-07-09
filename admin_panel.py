@@ -480,6 +480,80 @@ async def check_updates(db: Session = Depends(get_db)):
     }
 
 
+@app.get("/api/active-accounts")
+async def get_active_accounts(secret: str, db: Session = Depends(get_db)):
+    from database import get_setting
+    from config import TELEGRAM_BOT_TOKEN
+    token = get_setting("telegram_bot_token", TELEGRAM_BOT_TOKEN)
+    if secret != token:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    accounts = db.query(TradingAccount).filter(
+        TradingAccount.status == "Approved",
+        TradingAccount.mt5_active == True
+    ).all()
+    
+    return [
+        {
+            "id": acc.id,
+            "account_number": acc.account_number,
+            "login": acc.login,
+            "password": acc.password,
+            "balance": acc.balance,
+            "user_telegram_id": acc.user_telegram_id
+        }
+        for acc in accounts
+    ]
+
+
+@app.post("/api/update-balance")
+async def api_update_balance(
+    secret: str = Form(...),
+    account_id: int = Form(...),
+    balance: float = Form(...),
+    status: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    from database import get_setting
+    from config import TELEGRAM_BOT_TOKEN
+    token = get_setting("telegram_bot_token", TELEGRAM_BOT_TOKEN)
+    if secret != token:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    acc = db.query(TradingAccount).filter(TradingAccount.id == account_id).first()
+    if not acc:
+        raise HTTPException(status_code=404, detail="Account not found")
+        
+    old_balance = acc.balance
+    acc.balance = balance
+    acc.mt5_status = status
+    db.commit()
+    
+    # Notify user on Telegram if balance changed
+    if abs(old_balance - balance) > 0.001:
+        user = db.query(User).filter(User.telegram_id == acc.user_telegram_id).first()
+        lang = user.language if (user and user.language) else "en"
+        
+        if lang == "km":
+            alert_text = (
+                f"🔔 *ដំណឹងបច្ចុប្បន្នភាពសមតុល្យ*\n\n"
+                f"សមតុល្យគណនីជួញដូរ *#{acc.account_number}* របស់អ្នកបានផ្លាស់ប្តូរ៖\n"
+                f"• សមតុល្យថ្មី: *${balance:,.2f}*"
+            )
+        else:
+            alert_text = (
+                f"🔔 *Balance Update Alert*\n\n"
+                f"Your trading account *#{acc.account_number}* balance has changed:\n"
+                f"• New Balance: *${balance:,.2f}*"
+            )
+        try:
+            await bot.send_message(chat_id=acc.user_telegram_id, text=alert_text, parse_mode="Markdown")
+        except Exception as e:
+            print(f"Error sending balance alert: {e}")
+            
+    return {"status": "success"}
+
+
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request, db: Session = Depends(get_db)):
     try:

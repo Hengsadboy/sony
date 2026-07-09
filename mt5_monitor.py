@@ -33,6 +33,9 @@ from database import SessionLocal, TradingAccount, User
 import requests
 from config import TELEGRAM_BOT_TOKEN
 
+# VPS API URL config. If set, this client runs in client bridge mode and sends updates to the VPS
+VPS_API_URL = os.environ.get("VPS_API_URL", "")
+
 # We can send Telegram notifications directly via Bot API to notify users immediately
 def send_telegram_alert(chat_id, text):
     from database import get_setting
@@ -226,5 +229,101 @@ def main_monitor_loop():
             
         time.sleep(5)  # Coordinate threads every 5 seconds
 
+def client_monitor_loop():
+    logger.info(f"Starting MT5 Client Monitor Bridge -> Syncing with VPS at {VPS_API_URL}...")
+    
+    secret = TELEGRAM_BOT_TOKEN
+    local_cache = {}
+    status_cache = {}
+    
+    while True:
+        try:
+            response = requests.get(f"{VPS_API_URL}/api/active-accounts", params={"secret": secret}, timeout=10)
+            if response.status_code != 200:
+                logger.error(f"Failed to fetch active accounts from VPS. HTTP {response.status_code}")
+                time.sleep(5)
+                continue
+                
+            accounts = response.json()
+            
+            for acc in accounts:
+                acc_id = acc["id"]
+                account_number = acc["account_number"]
+                login_str = acc["login"]
+                password = acc["password"]
+                db_balance = acc["balance"]
+                
+                login_id, server = parse_credentials(login_str, account_number)
+                if not login_id:
+                    try:
+                        login_id = int(account_number)
+                    except:
+                        continue
+                        
+                if not server:
+                    server = "Exness-MT5Rea128"
+                    
+                new_balance = None
+                status = "Offline"
+                
+                if MT5_AVAILABLE:
+                    authorized = mt5.initialize(login=login_id, password=password, server=server)
+                    if authorized:
+                        status = "Online"
+                        acc_info = mt5.account_info()
+                        if acc_info is not None:
+                            new_balance = float(acc_info.balance)
+                        mt5.shutdown()
+                    else:
+                        logger.error(f"Account {acc_id}: MT5 local authorization failed.")
+                else:
+                    logger.warning("MT5 package not available/loaded locally.")
+                    
+                if new_balance is not None:
+                    logger.info(f"[Local MT5 Check] Account #{account_number} | Server: {server} | Status: {status} | Balance: ${new_balance:,.2f}")
+                    
+                    last_bal = local_cache.get(acc_id)
+                    last_status = status_cache.get(acc_id)
+                    
+                    if last_bal is None or abs(last_bal - new_balance) > 0.001 or last_status != status:
+                        update_payload = {
+                            "secret": secret,
+                            "account_id": acc_id,
+                            "balance": new_balance,
+                            "status": status
+                        }
+                        try:
+                            up_res = requests.post(f"{VPS_API_URL}/api/update-balance", data=update_payload, timeout=10)
+                            if up_res.status_code == 200:
+                                local_cache[acc_id] = new_balance
+                                status_cache[acc_id] = status
+                                logger.info(f"Synced Account #{account_number} to VPS: ${new_balance:.2f} ({status})")
+                        except Exception as ex:
+                            logger.error(f"Failed to post balance update to VPS: {ex}")
+                else:
+                    last_status = status_cache.get(acc_id)
+                    if last_status != "Offline":
+                        update_payload = {
+                            "secret": secret,
+                            "account_id": acc_id,
+                            "balance": db_balance,
+                            "status": "Offline"
+                        }
+                        try:
+                            up_res = requests.post(f"{VPS_API_URL}/api/update-balance", data=update_payload, timeout=10)
+                            if up_res.status_code == 200:
+                                status_cache[acc_id] = "Offline"
+                        except Exception as ex:
+                            logger.error(f"Failed to post offline status to VPS: {ex}")
+                            
+        except Exception as e:
+            logger.error(f"Exception in client monitor loop: {e}")
+            
+        time.sleep(1)
+
+
 if __name__ == "__main__":
-    main_monitor_loop()
+    if VPS_API_URL:
+        client_monitor_loop()
+    else:
+        main_monitor_loop()
