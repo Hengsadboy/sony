@@ -51,25 +51,31 @@ def send_telegram_alert(chat_id, text):
 # Cache of last known balances to detect changes
 balance_cache = {}
 
-def parse_credentials(login_str):
+def parse_credentials(login_str, account_number):
     """
     Parses login string to extract login ID and server name.
-    e.g. '123456 - MetaQuotes-Demo' or '123456@MetaQuotes-Demo' or '123456'
+    If login_str starts with a non-digit (like 'Exness-MT5Rea128'), returns (int(account_number), login_str).
+    If it has both login and server (e.g. '123456@Exness-MT5Rea128'), splits them.
     """
     if not login_str:
-        return None, None
-    import re
-    parts = re.split(r'[\s\-@,]+', str(login_str).strip())
-    login_id = None
-    server = None
-    if parts:
         try:
-            login_id = int(parts[0].strip())
-        except ValueError:
-            pass
-        if len(parts) > 1:
-            server = parts[1].strip()
-    return login_id, server
+            return int(account_number), None
+        except:
+            return None, None
+            
+    login_str = str(login_str).strip()
+    if login_str.isdigit():
+        return int(login_str), None
+        
+    import re
+    match = re.match(r'^(\d+)[\s@,]+(.+)$', login_str)
+    if match:
+        return int(match.group(1)), match.group(2).strip()
+        
+    try:
+        return int(account_number), login_str
+    except (ValueError, TypeError):
+        return None, login_str
 
 def monitor_account(acc_id):
     """
@@ -91,7 +97,7 @@ def monitor_account(acc_id):
             account_number = acc.account_number
             user_telegram_id = acc.user_telegram_id
             
-            login_id, server = parse_credentials(login_str)
+            login_id, server = parse_credentials(login_str, account_number)
             if not login_id:
                 # If cannot parse integer login ID, fallback to account_number if integer
                 try:
