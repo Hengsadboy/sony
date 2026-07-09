@@ -21,6 +21,7 @@ static_dir = os.path.join(BASE_DIR, "static")
 os.makedirs(os.path.join(static_dir, "css"), exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
+templates.env.cache = None
 
 # Standalone Telegram Bot for sending alerts
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
