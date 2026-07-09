@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, text
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from config import DATABASE_URL
 
@@ -76,6 +76,16 @@ class SystemSetting(Base):
 def init_db():
     Base.metadata.create_all(bind=engine)
     
+    # Ensure missing language column exists in users table (migration fallback)
+    db = SessionLocal()
+    try:
+        db.execute(text("ALTER TABLE users ADD COLUMN language VARCHAR DEFAULT 'en'"))
+        db.commit()
+    except Exception:
+        pass
+    finally:
+        db.close()
+        
     # Initialize default settings
     db = SessionLocal()
     try:
