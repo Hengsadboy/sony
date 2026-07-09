@@ -143,6 +143,9 @@ def monitor_account(acc_id):
                 new_balance = float(acc.balance)
                 
             if new_balance is not None:
+                status_str = "Online" if (MT5_AVAILABLE or acc.mt5_status == "Online") else "Offline"
+                logger.info(f"[Active MT5 Check] Account #{account_number} | Server: {server} | Status: {status_str} | Balance: ${new_balance:,.2f}")
+                
                 # Check cache
                 last_balance = balance_cache.get(acc_id)
                 if last_balance is None:
