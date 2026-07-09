@@ -707,6 +707,20 @@ async def forgot_password_start(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def forgot_password_get_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
     email = update.message.text
+    
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            await update.message.reply_text(
+                "❌ This email address is not registered in our system. "
+                "Please enter a valid email address:",
+                parse_mode="Markdown"
+            )
+            return FORGOT_GET_EMAIL
+    finally:
+        db.close()
+        
     context.user_data["forgot_email"] = email
     await update.message.reply_text(
         "Please enter your *Trading Account ID / Number*:",
@@ -717,36 +731,65 @@ async def forgot_password_get_email(update: Update, context: ContextTypes.DEFAUL
 async def forgot_password_get_acc_num(update: Update, context: ContextTypes.DEFAULT_TYPE):
     acc_num = update.message.text
     email = context.user_data.get("forgot_email")
-    user = update.effective_user
     
-    # 1. Send Admin Notification to Channel
-    alert = (
-        f"🔑 *PASSWORD RESET REQUEST*\n"
-        f"👤 User: {user.first_name}\n"
-        f"💳 Telegram ID: `{user.id}`\n"
-        f"📧 Email: `{email}`\n"
-        f"🔢 Trading Account ID: `{acc_num}`\n\n"
-        f"Please reset the password for this account in the MT4/MT5 manager."
-    )
-    await send_admin_notification(context.application, alert)
-    
-    # 2. Send specifically to the group ID
+    db = SessionLocal()
     try:
-        await context.application.bot.send_message(
-            chat_id="-5536620816",
-            text=alert,
+        # Check if the user profile exists with this email
+        db_user = db.query(User).filter(User.email == email).first()
+        if not db_user:
+            await update.message.reply_text(
+                "❌ This email is not registered. Request cancelled.",
+                reply_markup=persistent_markup,
+                parse_mode="Markdown"
+            )
+            return ConversationHandler.END
+            
+        # Check if there is a trading account with this account number belonging to this user
+        acc = db.query(TradingAccount).filter(
+            TradingAccount.user_telegram_id == db_user.telegram_id,
+            TradingAccount.account_number == acc_num
+        ).first()
+        
+        if not acc:
+            await update.message.reply_text(
+                "❌ Trading Account number not found under this email. "
+                "Please enter a valid Account Number:",
+                parse_mode="Markdown"
+            )
+            return FORGOT_GET_ACC_NUM
+            
+        # If it exists, proceed to notify the admins
+        alert = (
+            f"🔑 *PASSWORD RESET REQUEST*\n"
+            f"👤 User: {db_user.name}\n"
+            f"💳 Telegram ID: `{db_user.telegram_id}`\n"
+            f"📧 Email: `{email}`\n"
+            f"🔢 Trading Account ID: `{acc_num}` ({acc.account_type})\n\n"
+            f"Please reset the password for this account in the MT4/MT5 manager."
+        )
+        await send_admin_notification(context.application, alert)
+        
+        # Notify specific group
+        try:
+            await context.application.bot.send_message(
+                chat_id="-5536620816",
+                text=alert,
+                parse_mode="Markdown"
+            )
+            logger.info("Forgot password notification sent to group successfully.")
+        except Exception as e:
+            logger.error(f"Error sending forgot password to group: {e}")
+            
+        await update.message.reply_text(
+            "✅ *Password Reset Request Submitted!*\n\n"
+            f"Your request for Account *#{acc_num}* has been sent to our admin team. "
+            "We will reset your password and contact you shortly.",
+            reply_markup=persistent_markup,
             parse_mode="Markdown"
         )
-        logger.info("Forgot password notification sent to group successfully.")
-    except Exception as e:
-        logger.error(f"Error sending forgot password to group: {e}")
+    finally:
+        db.close()
         
-    await update.message.reply_text(
-        "✅ *Password Reset Request Submitted!*\n\n"
-        "Your request has been sent to our admin team. We will reset your password and send it to you shortly.",
-        reply_markup=persistent_markup,
-        parse_mode="Markdown"
-    )
     return ConversationHandler.END
 
 
