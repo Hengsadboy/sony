@@ -120,6 +120,9 @@ def monitor_account(acc_id):
                 # MT5 connection logic
                 authorized = mt5.initialize(login=login_id, password=password, server=server)
                 if authorized:
+                    if acc.mt5_status != "Online":
+                        acc.mt5_status = "Online"
+                        db.commit()
                     # Retrieve ONLY the balance as requested
                     acc_info = mt5.account_info()
                     if acc_info is not None:
@@ -128,10 +131,15 @@ def monitor_account(acc_id):
                         logger.error(f"Account {acc_id}: Failed to get account info. Error code: {mt5.last_error()}")
                     mt5.shutdown()
                 else:
+                    if acc.mt5_status != "Offline":
+                        acc.mt5_status = "Offline"
+                        db.commit()
                     logger.error(f"Account {acc_id}: Failed to initialize/authorize with login {login_id} on server {server}. Error code: {mt5.last_error()}")
             else:
                 # Mock Mode (runs on Linux/VPS without MT5 installed)
-                # Keep balance synced with database
+                if acc.mt5_status != "Online":
+                    acc.mt5_status = "Online"
+                    db.commit()
                 new_balance = float(acc.balance)
                 
             if new_balance is not None:

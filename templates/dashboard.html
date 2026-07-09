@@ -228,7 +228,20 @@
                                 <td><code>{{ acc.login }}</code></td>
                                 <td><code>{{ acc.password }}</code></td>
                                 <td>{{ acc.account_type }}</td>
-                                <td style="font-weight: 600; color: var(--accent-color);">${{ acc.balance }}</td>
+                                <td style="font-weight: 600; color: var(--accent-color);">
+                                    ${{ acc.balance }}
+                                    <div style="font-size: 0.75rem; margin-top: 0.2rem; font-weight: normal; text-transform: uppercase;">
+                                        {% if acc.mt5_active %}
+                                            {% if acc.mt5_status == 'Online' %}
+                                                <span style="color: var(--success-color);">● Online</span>
+                                            {% else %}
+                                                <span style="color: var(--danger-color);">● Offline</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span style="color: var(--text-muted);">● Disabled</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
                                 <td>
                                     <form action="/adjust-balance/{{ acc.id }}" method="POST" style="display: flex; gap: 0.3rem; align-items: center; max-width: 250px;">
                                         <input type="number" step="0.01" name="amount" placeholder="Amount" class="form-input" required style="margin-bottom: 0; width: 95px; padding: 0.4rem;">

@@ -33,6 +33,7 @@ class TradingAccount(Base):
     balance = Column(Float, default=0.0)
     status = Column(String, default="Pending")      # Pending, Approved
     mt5_active = Column(Boolean, default=False)
+    mt5_status = Column(String, default="Offline")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     # Relationships
@@ -86,6 +87,11 @@ def init_db():
         pass
     try:
         db.execute(text("ALTER TABLE trading_accounts ADD COLUMN mt5_active BOOLEAN DEFAULT 0"))
+        db.commit()
+    except Exception:
+        pass
+    try:
+        db.execute(text("ALTER TABLE trading_accounts ADD COLUMN mt5_status VARCHAR DEFAULT 'Offline'"))
         db.commit()
     except Exception:
         pass

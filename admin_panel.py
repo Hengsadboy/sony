@@ -380,6 +380,8 @@ async def toggle_mt5_active(acc_id: int, db: Session = Depends(get_db)):
     if not acc:
         raise HTTPException(status_code=404, detail="Account not found")
     acc.mt5_active = not acc.mt5_active
+    if not acc.mt5_active:
+        acc.mt5_status = "Offline"
     db.commit()
     return RedirectResponse(url="/dashboard", status_code=303)
 
@@ -460,7 +462,10 @@ async def check_updates(db: Session = Depends(get_db)):
     reg_count = db.query(TradingAccount).filter(TradingAccount.status == "Pending").count()
     tx_count = db.query(Transaction).filter(Transaction.status == "Pending").count()
     reset_count = db.query(PasswordResetRequest).filter(PasswordResetRequest.status == "Pending").count()
-    active_count = db.query(TradingAccount).filter(TradingAccount.status == "Approved").count()
+    active_accounts = db.query(TradingAccount).filter(TradingAccount.status == "Approved").all()
+    
+    # Hash of balances and MT5 statuses to trigger client-side reloads on changes
+    active_hash = hash(tuple((acc.id, acc.balance, acc.mt5_status) for acc in active_accounts))
     
     maintenance = db.query(SystemSetting).filter(SystemSetting.key == "maintenance_mode").first()
     maintenance_status = "true" if (maintenance and maintenance.value == "true") else "false"
@@ -469,7 +474,8 @@ async def check_updates(db: Session = Depends(get_db)):
         "pending_registrations": reg_count,
         "pending_transactions": tx_count,
         "pending_resets": reset_count,
-        "active_accounts": active_count,
+        "active_accounts": len(active_accounts),
+        "active_hash": active_hash,
         "maintenance_mode": maintenance_status
     }
 
