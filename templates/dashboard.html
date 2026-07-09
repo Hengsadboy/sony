@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Forex Broker Admin{% endblock %}
+
+{% block body %}
+<header class="glass-panel" style="border-radius: 0; border-left: none; border-right: none; border-top: none;">
+    <div class="logo">⚡ Forex Admin Dashboard</div>
+    <div>
+        <a href="/logout" class="logout-btn">Logout</a>
+    </div>
+</header>
+
+<div class="main-container">
+    <!-- PENDING ACCOUNT REGISTRATIONS -->
+    <div class="glass-panel card">
+        <h2 class="section-title">Pending Account Registrations</h2>
+        <div class="table-container">
+            {% if not pending_registrations %}
+                <p style="color: var(--text-muted); font-style: italic; padding: 1rem 0;">No pending account registrations.</p>
+            {% else %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User Details</th>
+                            <th>Telegram ID</th>
+                            <th>Account Type</th>
+                            <th>Credentials Assignment (MT4/MT5)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for acc in pending_registrations %}
+                            <tr>
+                                <td>
+                                    <div style="font-weight: 600;">{{ acc.user.name }}</div>
+                                    <div style="font-size: 0.85rem; color: var(--text-muted);">{{ acc.user.email }}</div>
+                                </td>
+                                <td><code>{{ acc.user_telegram_id }}</code></td>
+                                <td><span class="pill pill-approved">{{ acc.account_type }}</span></td>
+                                <td>
+                                    <form action="/approve-registration/{{ acc.id }}" method="POST" style="display: flex; gap: 0.5rem; align-items: center; max-width: 600px;">
+                                        <input type="text" name="account_number" placeholder="Account Number" class="form-input" required style="margin-bottom: 0; flex: 1;">
+                                        <input type="text" name="login_details" placeholder="Login (e.g. Server)" class="form-input" required style="margin-bottom: 0; flex: 1;">
+                                        <input type="text" name="password" placeholder="Password" class="form-input" required style="margin-bottom: 0; flex: 1;">
+                                        <button type="submit" class="btn-success">Confirm</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="grid-cols-2">
+        <!-- PENDING DEPOSITS -->
+        <div class="glass-panel card">
+            <h2 class="section-title">Pending Deposits</h2>
+            <div class="table-container">
+                {% if not pending_deposits %}
+                    <p style="color: var(--text-muted); font-style: italic; padding: 1rem 0;">No pending deposit requests.</p>
+                {% else %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Account</th>
+                                <th>Receipt</th>
+                                <th>Approve Amount</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tx in pending_deposits %}
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 600;">{{ tx.user.name }}</div>
+                                        <div style="font-size: 0.85rem; color: var(--text-muted);">Acc Num: {{ tx.account.account_number }}</div>
+                                        <div style="font-size: 0.85rem; color: var(--text-muted);">Caption Val: ${{ tx.amount }}</div>
+                                    </td>
+                                    <td>
+                                        {% if tx.receipt_path %}
+                                            <img src="/static/uploads/{{ tx.receipt_path }}" class="receipt-thumb" onclick="openModal(this.src)">
+                                        {% else %}
+                                            No Receipt
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <form id="form-dep-{{ tx.id }}" action="/approve-deposit/{{ tx.id }}" method="POST" style="display: flex; gap: 0.5rem; align-items: center;">
+                                            <span style="color: var(--text-muted); font-weight: bold;">$</span>
+                                            <input type="number" step="0.01" name="amount" value="{{ tx.amount }}" class="form-input" required style="margin-bottom: 0; width: 100px;">
+                                        </form>
+                                    </td>
+                                    <td>
+                                        <div style="display: flex; gap: 0.5rem;">
+                                            <button type="submit" form="form-dep-{{ tx.id }}" class="btn-success">Approve</button>
+                                            <form action="/reject-deposit/{{ tx.id }}" method="POST">
+                                                <button type="submit" class="btn-danger">Reject</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- PENDING WITHDRAWALS -->
+        <div class="glass-panel card">
+            <h2 class="section-title">Pending Withdrawals</h2>
+            <div class="table-container">
+                {% if not pending_withdrawals %}
+                    <p style="color: var(--text-muted); font-style: italic; padding: 1rem 0;">No pending withdrawal requests.</p>
+                {% else %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Account</th>
+                                <th>Amount</th>
+                                <th>Payment Details</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tx in pending_withdrawals %}
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 600;">{{ tx.user.name }}</div>
+                                        <div style="font-size: 0.85rem; color: var(--text-muted);">Acc: {{ tx.account.account_number }}</div>
+                                    </td>
+                                    <td style="color: var(--danger-color); font-weight: 600;">${{ tx.amount }}</td>
+                                    <td>
+                                        <div style="max-width: 200px; font-size: 0.85rem; overflow-wrap: break-word; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 6px;">
+                                            {{ tx.details }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div style="display: flex; gap: 0.5rem;">
+                                            <form action="/approve-withdrawal/{{ tx.id }}" method="POST">
+                                                <button type="submit" class="btn-success">Approve</button>
+                                            </form>
+                                            <form action="/reject-withdrawal/{{ tx.id }}" method="POST">
+                                                <button type="submit" class="btn-danger">Reject</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- APPROVED ACCOUNTS REFERENCE -->
+    <div class="glass-panel card">
+        <h2 class="section-title">Active Trading Accounts</h2>
+        <div class="table-container">
+            {% if not all_accounts %}
+                <p style="color: var(--text-muted); font-style: italic; padding: 1rem 0;">No active trading accounts.</p>
+            {% else %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Telegram ID</th>
+                            <th>Account Num</th>
+                            <th>Login / Server</th>
+                            <th>Type</th>
+                            <th>Balance</th>
+                            <th>Adjust Balance</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for acc in all_accounts %}
+                            <tr>
+                                <td>{{ acc.user.name }}</td>
+                                <td><code>{{ acc.user_telegram_id }}</code></td>
+                                <td><code>{{ acc.account_number }}</code></td>
+                                <td><code>{{ acc.login }}</code></td>
+                                <td>{{ acc.account_type }}</td>
+                                <td style="font-weight: 600; color: var(--accent-color);">${{ acc.balance }}</td>
+                                <td>
+                                    <form action="/adjust-balance/{{ acc.id }}" method="POST" style="display: flex; gap: 0.3rem; align-items: center; max-width: 250px;">
+                                        <input type="number" step="0.01" name="amount" placeholder="Amount" class="form-input" required style="margin-bottom: 0; width: 95px; padding: 0.4rem;">
+                                        <button type="submit" name="action" value="add" class="btn-success" style="padding: 0.4rem 0.8rem; margin-right: 0; font-weight: bold;">+</button>
+                                        <button type="submit" name="action" value="subtract" class="btn-danger" style="padding: 0.4rem 0.8rem; font-weight: bold;">-</button>
+                                    </form>
+                                </td>
+                                <td>
+                                    <form action="/delete-account/{{ acc.id }}" method="POST" onsubmit="return confirm('Are you sure you want to delete trading account #{{ acc.account_number }}? All transactions for this account will be permanently deleted.');" style="display:inline;">
+                                        <button type="submit" class="btn-danger" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; font-weight: bold; background: var(--danger-color); border: none; border-radius: 6px; cursor: pointer; color: white;">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Image Modal -->
+<div id="receiptModal" class="modal" onclick="closeModal()">
+    <span class="close-modal">&times;</span>
+    <img class="modal-content" id="imgTarget">
+</div>
+
+<script>
+    function openModal(src) {
+        document.getElementById('receiptModal').style.display = "block";
+        document.getElementById('imgTarget').src = src;
+    }
+    
+    function closeModal() {
+        document.getElementById('receiptModal').style.display = "none";
+    }
+</script>
+{% endblock %}

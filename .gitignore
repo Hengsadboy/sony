@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.db
+trading.db
+*.log
+venv/
+.venv/
+.env
+.agents/
+.gemini/
+static/uploads/receipt_*
