@@ -213,12 +213,13 @@
                             <th>Type</th>
                             <th>Balance</th>
                             <th>Adjust Balance</th>
+                            <th>History</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for acc in all_accounts %}
-                            <tr>
+                            <tr id="account-{{ acc.id }}">
                                 <td>{{ acc.user.name }}</td>
                                 <td><code>{{ acc.user_telegram_id }}</code></td>
                                 <td><code>{{ acc.account_number }}</code></td>
@@ -233,9 +234,51 @@
                                     </form>
                                 </td>
                                 <td>
+                                    <button type="button" class="btn-primary" onclick="toggleHistory({{ acc.id }})" style="padding: 0.4rem 0.6rem; margin: 0; font-size: 0.8rem; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); color: white;">History 📜</button>
+                                </td>
+                                <td>
                                     <form action="/delete-account/{{ acc.id }}" method="POST" onsubmit="return confirm('Are you sure you want to delete trading account #{{ acc.account_number }}? All transactions for this account will be permanently deleted.');" style="display:inline;">
                                         <button type="submit" class="btn-danger" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; font-weight: bold; background: var(--danger-color); border: none; border-radius: 6px; cursor: pointer; color: white;">Delete</button>
                                     </form>
+                                </td>
+                            </tr>
+                            <tr id="history-row-{{ acc.id }}" style="display: none; background: rgba(0, 0, 0, 0.25);">
+                                <td colspan="9" style="padding: 1rem; border-top: none;">
+                                    <div style="border-radius: 8px; border: 1px solid var(--glass-border); padding: 1rem; background: rgba(20, 20, 35, 0.5);">
+                                        <h4 style="margin-top: 0; margin-bottom: 0.5rem; color: var(--accent-color); display: flex; align-items: center; gap: 0.5rem;">
+                                            <span>📜 History for Account #{{ acc.account_number }}</span>
+                                        </h4>
+                                        {% if not acc.transactions %}
+                                            <p style="color: var(--text-muted); font-size: 0.85rem; font-style: italic; margin: 0; padding: 0.5rem 0;">No transactions found for this account.</p>
+                                        {% else %}
+                                            <div style="max-height: 180px; overflow-y: auto;">
+                                                <table style="width: 100%; font-size: 0.85rem; border-collapse: collapse;">
+                                                    <thead>
+                                                        <tr style="border-bottom: 1px solid var(--glass-border); text-align: left;">
+                                                            <th style="padding: 0.4rem 0.6rem;">Type</th>
+                                                            <th style="padding: 0.4rem 0.6rem;">Amount</th>
+                                                            <th style="padding: 0.4rem 0.6rem;">Status</th>
+                                                            <th style="padding: 0.4rem 0.6rem;">Date</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for tx in acc.transactions | sort(attribute='created_at', reverse=true) %}
+                                                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                                            <td style="padding: 0.4rem 0.6rem; font-weight: bold; color: {% if tx.type == 'Deposit' %}var(--success-color){% else %}#ffb74d{% endif %};">{{ tx.type }}</td>
+                                                            <td style="padding: 0.4rem 0.6rem;">${{ "%.2f"|format(tx.amount) }}</td>
+                                                            <td style="padding: 0.4rem 0.6rem;">
+                                                                <span class="badge {% if tx.status == 'Approved' %}badge-approved{% elif tx.status == 'Rejected' %}badge-rejected{% else %}badge-pending{% endif %}">
+                                                                    {{ tx.status }}
+                                                                </span>
+                                                            </td>
+                                                            <td style="padding: 0.4rem 0.6rem; color: var(--text-muted);">{{ tx.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        {% endif %}
+                                    </div>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -365,6 +408,15 @@
     
     function closeModal() {
         document.getElementById('receiptModal').style.display = "none";
+    }
+
+    function toggleHistory(accId) {
+        var row = document.getElementById("history-row-" + accId);
+        if (row.style.display === "none") {
+            row.style.display = "table-row";
+        } else {
+            row.style.display = "none";
+        }
     }
 
     // Auto-refresh Dashboard on updates
