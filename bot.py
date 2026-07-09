@@ -43,7 +43,11 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
     WITHDRAW_GET_BANK_NAME,
     WITHDRAW_GET_ACC_NUM,
     WITHDRAW_GET_ACC_NAME,
-) = range(11)
+    
+    # Forgot Password States
+    FORGOT_GET_EMAIL,
+    FORGOT_GET_ACC_NUM,
+) = range(13)
 
 
 # Helper function to send notification to the Admin Channel
@@ -64,7 +68,8 @@ from telegram import ReplyKeyboardMarkup
 
 reply_keyboard = [
     ["📝 Register Account", "ℹ️ My Account Info"],
-    ["💰 Deposit", "💸 Withdraw"]
+    ["💰 Deposit", "💸 Withdraw"],
+    ["🔑 Forgot Password"]
 ]
 persistent_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True)
 
@@ -688,7 +693,60 @@ async def withdraw_get_acc_name(update: Update, context: ContextTypes.DEFAULT_TY
         db.close()
         
     return ConversationHandler.END
+
+
+# --- FORGOT PASSWORD FLOW ---
+async def forgot_password_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message_target = update.message if update.message else update.callback_query.message
+    await message_target.reply_text(
+        "🔑 *Forgot Password Request*\n\n"
+        "Please enter the *Email Address* linked to your trading account:",
+        parse_mode="Markdown"
+    )
+    return FORGOT_GET_EMAIL
+
+async def forgot_password_get_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    email = update.message.text
+    context.user_data["forgot_email"] = email
+    await update.message.reply_text(
+        "Please enter your *Trading Account ID / Number*:",
+        parse_mode="Markdown"
+    )
+    return FORGOT_GET_ACC_NUM
+
+async def forgot_password_get_acc_num(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    acc_num = update.message.text
+    email = context.user_data.get("forgot_email")
+    user = update.effective_user
+    
+    # 1. Send Admin Notification to Channel
+    alert = (
+        f"🔑 *PASSWORD RESET REQUEST*\n"
+        f"👤 User: {user.first_name}\n"
+        f"💳 Telegram ID: `{user.id}`\n"
+        f"📧 Email: `{email}`\n"
+        f"🔢 Trading Account ID: `{acc_num}`\n\n"
+        f"Please reset the password for this account in the MT4/MT5 manager."
+    )
+    await send_admin_notification(context.application, alert)
+    
+    # 2. Send specifically to the group ID
+    try:
+        await context.application.bot.send_message(
+            chat_id="-5536620816",
+            text=alert,
+            parse_mode="Markdown"
+        )
+        logger.info("Forgot password notification sent to group successfully.")
+    except Exception as e:
+        logger.error(f"Error sending forgot password to group: {e}")
         
+    await update.message.reply_text(
+        "✅ *Password Reset Request Submitted!*\n\n"
+        "Your request has been sent to our admin team. We will reset your password and send it to you shortly.",
+        reply_markup=persistent_markup,
+        parse_mode="Markdown"
+    )
     return ConversationHandler.END
 
 
@@ -759,6 +817,18 @@ def run_bot():
         fallbacks=[CallbackQueryHandler(cancel_conv, pattern="^cancel_conv$")],
     )
     
+    # Forgot Password Conversation Handler
+    forgot_handler = ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.Regex("^🔑 Forgot Password$"), forgot_password_start)
+        ],
+        states={
+            FORGOT_GET_EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, forgot_password_get_email)],
+            FORGOT_GET_ACC_NUM: [MessageHandler(filters.TEXT & ~filters.COMMAND, forgot_password_get_acc_num)],
+        },
+        fallbacks=[CallbackQueryHandler(cancel_conv, pattern="^cancel_conv$")],
+    )
+    
     # Basic Handlers
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(start, pattern="^btn_back$"))
@@ -769,6 +839,7 @@ def run_bot():
     application.add_handler(reg_handler)
     application.add_handler(dep_handler)
     application.add_handler(withdraw_handler)
+    application.add_handler(forgot_handler)
     
     # Start the Bot using polling
     logger.info("Starting Telegram Bot...")
