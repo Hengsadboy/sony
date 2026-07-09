@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from database import get_db, init_db, User, TradingAccount, Transaction
-from config import ADMIN_USERNAME, ADMIN_PASSWORD, TELEGRAM_BOT_TOKEN, UPLOAD_DIR
+from config import ADMIN_USERNAME, ADMIN_PASSWORD, TELEGRAM_BOT_TOKEN, UPLOAD_DIR, BASE_DIR
 from telegram import Bot
 import uvicorn
 
@@ -15,11 +15,12 @@ init_db()
 
 app = FastAPI(title="Forex Broker Admin Panel")
 
-# Mount Static Files & Templates
+# Mount Static Files & Templates (Platform Independent)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs("d:/work/trading/static/css", exist_ok=True)
-app.mount("/static", StaticFiles(directory="d:/work/trading/static"), name="static")
-templates = Jinja2Templates(directory="d:/work/trading/templates")
+static_dir = os.path.join(BASE_DIR, "static")
+os.makedirs(os.path.join(static_dir, "css"), exist_ok=True)
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 # Standalone Telegram Bot for sending alerts
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
