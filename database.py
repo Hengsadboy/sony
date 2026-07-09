@@ -89,10 +89,25 @@ def init_db():
     # Initialize default settings
     db = SessionLocal()
     try:
+        from config import TELEGRAM_BOT_TOKEN
+        
         maintenance = db.query(SystemSetting).filter(SystemSetting.key == "maintenance_mode").first()
         if not maintenance:
             db.add(SystemSetting(key="maintenance_mode", value="false"))
-            db.commit()
+            
+        aba_link = db.query(SystemSetting).filter(SystemSetting.key == "aba_pay_link").first()
+        if not aba_link:
+            db.add(SystemSetting(key="aba_pay_link", value="https://link.payway.com.kh/ABAPAYMu475556i"))
+            
+        group_id = db.query(SystemSetting).filter(SystemSetting.key == "telegram_group_id").first()
+        if not group_id:
+            db.add(SystemSetting(key="telegram_group_id", value="-5536620816"))
+            
+        bot_token = db.query(SystemSetting).filter(SystemSetting.key == "telegram_bot_token").first()
+        if not bot_token:
+            db.add(SystemSetting(key="telegram_bot_token", value=TELEGRAM_BOT_TOKEN))
+            
+        db.commit()
     except Exception:
         pass
     finally:
@@ -104,3 +119,16 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def get_setting(key: str, default: str = "") -> str:
+    db = SessionLocal()
+    try:
+        setting = db.query(SystemSetting).filter(SystemSetting.key == key).first()
+        if setting:
+            return setting.value
+    except Exception:
+        pass
+    finally:
+        db.close()
+    return default

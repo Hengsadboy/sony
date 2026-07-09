@@ -24,7 +24,14 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 templates.env.cache = None
 
 # Standalone Telegram Bot for sending alerts
-bot = Bot(token=TELEGRAM_BOT_TOKEN)
+class DynamicBot:
+    def __getattr__(self, name):
+        from database import get_setting
+        token = get_setting("telegram_bot_token", TELEGRAM_BOT_TOKEN)
+        actual_bot = Bot(token=token)
+        return getattr(actual_bot, name)
+
+bot = DynamicBot()
 
 # Simple Mock Session store for Admin Login
 admin_sessions = set()
@@ -113,6 +120,15 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     maintenance = db.query(SystemSetting).filter(SystemSetting.key == "maintenance_mode").first()
     maintenance_enabled = maintenance and maintenance.value == "true"
     
+    aba_pay_link_setting = db.query(SystemSetting).filter(SystemSetting.key == "aba_pay_link").first()
+    aba_pay_link = aba_pay_link_setting.value if aba_pay_link_setting else "https://link.payway.com.kh/ABAPAYMu475556i"
+    
+    telegram_group_id_setting = db.query(SystemSetting).filter(SystemSetting.key == "telegram_group_id").first()
+    telegram_group_id = telegram_group_id_setting.value if telegram_group_id_setting else "-5536620816"
+    
+    telegram_bot_token_setting = db.query(SystemSetting).filter(SystemSetting.key == "telegram_bot_token").first()
+    telegram_bot_token = telegram_bot_token_setting.value if telegram_bot_token_setting else ""
+    
     return templates.TemplateResponse(
         request=request,
         name="dashboard.html",
@@ -124,7 +140,10 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
             "pending_resets": pending_resets,
             "history_deposits": history_deposits,
             "history_withdrawals": history_withdrawals,
-            "maintenance_enabled": maintenance_enabled
+            "maintenance_enabled": maintenance_enabled,
+            "aba_pay_link": aba_pay_link,
+            "telegram_group_id": telegram_group_id,
+            "telegram_bot_token": telegram_bot_token
         }
     )
 
@@ -483,6 +502,33 @@ async def broadcast(
             
     return RedirectResponse(url="/dashboard", status_code=303)
 
+
+@app.post("/update-settings")
+async def update_settings(
+    request: Request,
+    aba_pay_link: str = Form(...),
+    telegram_group_id: str = Form(...),
+    telegram_bot_token: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    try:
+        get_current_admin(request)
+    except HTTPException:
+        return RedirectResponse(url="/login", status_code=303)
+
+    for key, val in [
+        ("aba_pay_link", aba_pay_link),
+        ("telegram_group_id", telegram_group_id),
+        ("telegram_bot_token", telegram_bot_token)
+    ]:
+        setting = db.query(SystemSetting).filter(SystemSetting.key == key).first()
+        if not setting:
+            setting = SystemSetting(key=key)
+            db.add(setting)
+        setting.value = val.strip()
+    db.commit()
+    
+    return RedirectResponse(url="/dashboard", status_code=303)
 
 
 if __name__ == "__main__":

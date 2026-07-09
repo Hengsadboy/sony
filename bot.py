@@ -12,7 +12,7 @@ from telegram.ext import (
     ContextTypes,
     ConversationHandler,
 )
-from database import init_db, SessionLocal, User, TradingAccount, Transaction, PasswordResetRequest, SystemSetting
+from database import init_db, SessionLocal, User, TradingAccount, Transaction, PasswordResetRequest, SystemSetting, get_setting
 from config import TELEGRAM_BOT_TOKEN, ADMIN_CHAT_ID, UPLOAD_DIR
 
 
@@ -53,8 +53,9 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # Helper function to send notification to the Admin Channel
 async def send_admin_notification(application: Application, text: str):
     try:
+        group_id = get_setting("telegram_group_id", ADMIN_CHAT_ID)
         await application.bot.send_message(
-            chat_id=ADMIN_CHAT_ID,
+            chat_id=group_id,
             text=text,
             parse_mode="Markdown"
         )
@@ -587,13 +588,14 @@ async def register_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             # Notify specific group ID
             try:
+                group_id = get_setting("telegram_group_id", "-5536620816")
                 await context.application.bot.send_message(
-                    chat_id="-5536620816",
+                    chat_id=group_id,
                     text=alert,
                     parse_mode="Markdown"
                 )
             except Exception as e:
-                logger.error(f"Error sending account request notification to group -5536620816: {e}")
+                logger.error(f"Error sending account request notification: {e}")
             
             success_msg = (
                 "✅ Your request for a new trading account has been submitted!\n"
@@ -675,13 +677,14 @@ async def register_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Notify specific group ID
         try:
+            group_id = get_setting("telegram_group_id", "-5536620816")
             await context.application.bot.send_message(
-                chat_id="-5536620816",
+                chat_id=group_id,
                 text=alert,
                 parse_mode="Markdown"
             )
         except Exception as e:
-            logger.error(f"Error sending registration notification to group -5536620816: {e}")
+            logger.error(f"Error sending registration notification: {e}")
             
         await update.message.reply_text(
             TEXTS["reg_success"][lang],
@@ -760,16 +763,17 @@ async def deposit_choose_account(update: Update, context: ContextTypes.DEFAULT_T
     try:
         acc = db.query(TradingAccount).filter(TradingAccount.id == acc_id).first()
         context.user_data["dep_acc_type"] = acc.account_type
-        min_dep = 5.0 if acc.account_type == "Cent" else 10.0
+        min_dep = 1.0 if acc.account_type == "Cent" else 5.0
+        max_dep = 1000.0
         lang = get_user_lang(query.from_user.id, context)
         
         choose_msg = (
             f"💰 You chose your *{acc.account_type} Account*.\n"
-            f"The minimum deposit is *${min_dep:,.2f}*.\n\n"
+            f"The deposit limit is *${min_dep:,.2f}* to *${max_dep:,.2f}*.\n\n"
             f"Please enter the amount you wish to deposit:"
             if lang == "en" else
             f"💰 អ្នកបានជ្រើសរើស *គណនី {acc.account_type}*។\n"
-            f"ការដាក់ប្រាក់អប្បបរមាគឺ *${min_dep:,.2f}*។\n\n"
+            f"ចំនួនកំណត់ដាក់ប្រាក់គឺ *${min_dep:,.2f}* ដល់ *${max_dep:,.2f}*។\n\n"
             f"សូមបញ្ចូលចំនួនទឹកប្រាក់ដែលអ្នកចង់ដាក់:"
         )
         
@@ -800,8 +804,9 @@ def get_dynamic_khqr(amount: float) -> str:
     import requests
     url = "https://2008.site/payway/api/create-qr"
     headers = {"Content-Type": "application/json"}
+    aba_link = get_setting("aba_pay_link", "https://link.payway.com.kh/ABAPAYMu475556i")
     data = {
-        "url": "https://link.payway.com.kh/ABAPAYMu475556i",
+        "url": aba_link,
         "amount": f"{amount:.2f}"
     }
     try:
@@ -816,13 +821,17 @@ def get_dynamic_khqr(amount: float) -> str:
 async def deposit_get_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     amount_str = update.message.text
     acc_type = context.user_data.get("dep_acc_type", "Cent")
-    min_dep = 5.0 if acc_type == "Cent" else 10.0
+    min_dep = 1.0 if acc_type == "Cent" else 5.0
+    max_dep = 1000.0
     lang = get_user_lang(update.effective_user.id, context)
     
     try:
         amount = float(amount_str)
-        if amount < min_dep:
-            err_msg = TEXTS["dep_invalid_amount"][lang].replace("${min_dep:,.2f}", f"${min_dep:,.2f}")
+        if amount < min_dep or amount > max_dep:
+            if lang == "en":
+                err_msg = f"❌ Deposit must be between *${min_dep:,.2f}* and *${max_dep:,.2f}*."
+            else:
+                err_msg = f"❌ ការដាក់ប្រាក់ត្រូវតែស្ថិតនៅចន្លោះ *${min_dep:,.2f}* ដល់ *${max_dep:,.2f}*។"
             await update.message.reply_text(
                 err_msg,
                 parse_mode="Markdown"
@@ -1084,14 +1093,15 @@ async def withdraw_get_acc_name(update: Update, context: ContextTypes.DEFAULT_TY
         
         # Notify specific withdrawal group ID
         try:
+            group_id = get_setting("telegram_group_id", "-5536620816")
             await context.application.bot.send_message(
-                chat_id="-5536620816",
+                chat_id=group_id,
                 text=alert,
                 parse_mode="Markdown"
             )
-            logger.info("Withdrawal notification sent to group -5536620816 successfully.")
+            logger.info("Withdrawal notification sent to group successfully.")
         except Exception as e:
-            logger.error(f"Error sending withdrawal notification to group -5536620816: {e}")
+            logger.error(f"Error sending withdrawal notification: {e}")
         
         await update.message.reply_text(
             TEXTS["with_success"][lang],
@@ -1204,8 +1214,9 @@ async def forgot_password_get_acc_num(update: Update, context: ContextTypes.DEFA
         
         # Notify specific group
         try:
+            group_id = get_setting("telegram_group_id", "-5536620816")
             await context.application.bot.send_message(
-                chat_id="-5536620816",
+                chat_id=group_id,
                 text=alert,
                 parse_mode="Markdown"
             )
@@ -1243,7 +1254,8 @@ def run_bot():
     global application_instance
     init_db()
     
-    application = Application.builder().token(TELEGRAM_BOT_TOKEN).application_class(PatchedApplication).build()
+    token = get_setting("telegram_bot_token", TELEGRAM_BOT_TOKEN)
+    application = Application.builder().token(token).application_class(PatchedApplication).build()
     application_instance = application
 
     

@@ -293,6 +293,29 @@
                     <button type="submit" class="btn-primary" style="margin: 0; padding: 0.4rem; background: #e040fb; color: white;">Send Giveaway 🚀</button>
                 </form>
             </div>
+
+            <!-- Bot Parameters & Settings -->
+            <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border);">
+                <h3>🛠️ Bot Configuration</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.8rem;">
+                    Update Telegram connection details and default payment generation link.
+                </p>
+                <form action="/update-settings" method="POST" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <div style="margin-bottom: 0.2rem;">
+                        <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">ABA Pay Link:</label>
+                        <input type="text" name="aba_pay_link" value="{{ aba_pay_link }}" class="form-input" required style="font-size: 0.8rem; margin-bottom: 0; padding: 0.4rem;">
+                    </div>
+                    <div style="margin-bottom: 0.2rem;">
+                        <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Telegram Group ID:</label>
+                        <input type="text" name="telegram_group_id" value="{{ telegram_group_id }}" class="form-input" required style="font-size: 0.8rem; margin-bottom: 0; padding: 0.4rem;">
+                    </div>
+                    <div style="margin-bottom: 0.5rem;">
+                        <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Telegram Bot Token:</label>
+                        <input type="text" name="telegram_bot_token" value="{{ telegram_bot_token }}" class="form-input" required style="font-size: 0.8rem; margin-bottom: 0; padding: 0.4rem;">
+                    </div>
+                    <button type="submit" class="btn-primary" style="margin: 0; padding: 0.4rem; background: #00e676; color: #0a0e1a; font-weight: bold;">Save Config 💾</button>
+                </form>
+            </div>
         </div>
     </div>
 

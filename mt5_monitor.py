@@ -35,7 +35,9 @@ from config import TELEGRAM_BOT_TOKEN
 
 # We can send Telegram notifications directly via Bot API to notify users immediately
 def send_telegram_alert(chat_id, text):
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    from database import get_setting
+    token = get_setting("telegram_bot_token", TELEGRAM_BOT_TOKEN)
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {
         "chat_id": chat_id,
         "text": text,
