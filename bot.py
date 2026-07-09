@@ -416,11 +416,12 @@ async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
         db.close()
         
     # Send welcome text in selected language with keyboard
-    first_name = query.from_user.first_name
+    first_name = (query.from_user.first_name or "Trader").replace("*", "").replace("_", "").replace("[", "").replace("`", "")
     welcome_text = TEXTS["welcome"][lang].format(name=first_name)
     persistent_markup = get_persistent_markup(lang)
     
-    await query.message.reply_text(
+    target_msg = query.message if query.message else update.effective_message
+    await target_msg.reply_text(
         welcome_text,
         reply_markup=persistent_markup,
         parse_mode="Markdown"
