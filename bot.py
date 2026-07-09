@@ -12,7 +12,7 @@ from telegram.ext import (
     ContextTypes,
     ConversationHandler,
 )
-from database import init_db, SessionLocal, User, TradingAccount, Transaction
+from database import init_db, SessionLocal, User, TradingAccount, Transaction, PasswordResetRequest
 from config import TELEGRAM_BOT_TOKEN, ADMIN_CHAT_ID, UPLOAD_DIR
 
 
@@ -758,6 +758,15 @@ async def forgot_password_get_acc_num(update: Update, context: ContextTypes.DEFA
             )
             return FORGOT_GET_ACC_NUM
             
+        # Create a database record for the password reset request
+        new_request = PasswordResetRequest(
+            user_telegram_id=db_user.telegram_id,
+            trading_account_id=acc.id,
+            status="Pending"
+        )
+        db.add(new_request)
+        db.commit()
+
         # If it exists, proceed to notify the admins
         alert = (
             f"🔑 *PASSWORD RESET REQUEST*\n"

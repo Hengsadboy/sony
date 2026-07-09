@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from database import get_db, init_db, User, TradingAccount, Transaction
+from database import get_db, init_db, User, TradingAccount, Transaction, PasswordResetRequest
 from config import ADMIN_USERNAME, ADMIN_PASSWORD, TELEGRAM_BOT_TOKEN, UPLOAD_DIR, BASE_DIR
 from telegram import Bot
 import uvicorn
@@ -97,6 +97,9 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     # Fetch overall approved accounts for reference
     all_accounts = db.query(TradingAccount).filter(TradingAccount.status == "Approved").all()
     
+    # Fetch pending password reset requests
+    pending_resets = db.query(PasswordResetRequest).filter(PasswordResetRequest.status == "Pending").all()
+    
     # Fetch historical processed transactions (Approved or Rejected)
     transaction_history = db.query(Transaction).filter(
         Transaction.status.in_(["Approved", "Rejected"])
@@ -110,6 +113,7 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
             "pending_deposits": pending_deposits,
             "pending_withdrawals": pending_withdrawals,
             "all_accounts": all_accounts,
+            "pending_resets": pending_resets,
             "transaction_history": transaction_history
         }
     )
@@ -325,6 +329,37 @@ async def delete_account(acc_id: int, db: Session = Depends(get_db)):
         await bot.send_message(chat_id=user_id, text=user_message, parse_mode="Markdown")
     except Exception as e:
         print(f"Error sending deletion message to user: {e}")
+        
+    return RedirectResponse(url="/dashboard", status_code=303)
+
+
+@app.post("/approve-password-reset/{req_id}")
+async def approve_password_reset(
+    req_id: int,
+    new_password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    req = db.query(PasswordResetRequest).filter(PasswordResetRequest.id == req_id).first()
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found")
+        
+    acc = req.account
+    acc.password = new_password
+    req.status = "Completed"
+    db.commit()
+    
+    # Send Telegram message to user with the new login details
+    try:
+        user_message = (
+            f"🔑 *Password Reset Completed*\n\n"
+            f"Your request for *{acc.account_type} Account #{acc.account_number}* has been processed.\n"
+            f"Here are your new login details:\n"
+            f"• Login: `{acc.login}`\n"
+            f"• New Password: `{new_password}`"
+        )
+        await bot.send_message(chat_id=acc.user_telegram_id, text=user_message, parse_mode="Markdown")
+    except Exception as e:
+        print(f"Error sending password reset message to user: {e}")
         
     return RedirectResponse(url="/dashboard", status_code=303)
 

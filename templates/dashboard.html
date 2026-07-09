@@ -154,6 +154,47 @@
         </div>
     </div>
 
+    <!-- PENDING PASSWORD RESETS -->
+    <div class="glass-panel card">
+        <h2 class="section-title">🔑 Pending Password Resets</h2>
+        <div class="table-container">
+            {% if not pending_resets %}
+                <p style="color: var(--text-muted); font-style: italic; padding: 1rem 0;">No pending password reset requests.</p>
+            {% else %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Trading Account</th>
+                            <th>Assign New Password</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in pending_resets %}
+                            <tr>
+                                <td>
+                                    <div style="font-weight: 600;">{{ req.user.name }}</div>
+                                    <div style="font-size: 0.85rem; color: var(--text-muted);">TG: <code>{{ req.user_telegram_id }}</code></div>
+                                </td>
+                                <td>
+                                    <div style="font-weight: 600;">{{ req.account.account_type }} Account</div>
+                                    <div style="font-size: 0.85rem; color: var(--text-muted);">Num: <code>{{ req.account.account_number }}</code></div>
+                                    <div style="font-size: 0.85rem; color: var(--text-muted);">Login: <code>{{ req.account.login }}</code></div>
+                                </td>
+                                <td>
+                                    <form action="/approve-password-reset/{{ req.id }}" method="POST" style="display: flex; gap: 0.5rem; align-items: center; max-width: 320px;">
+                                        <input type="text" name="new_password" placeholder="New Password" class="form-input" required style="margin-bottom: 0; padding: 0.4rem;">
+                                        <button type="submit" class="btn-success" style="padding: 0.4rem 0.8rem; margin: 0;">Complete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+    </div>
+
     <!-- APPROVED ACCOUNTS REFERENCE -->
     <div class="glass-panel card">
         <h2 class="section-title">Active Trading Accounts</h2>

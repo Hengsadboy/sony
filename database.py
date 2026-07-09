@@ -50,9 +50,18 @@ class Transaction(Base):
     status = Column(String, default="Pending")     # Pending, Approved, Rejected
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
+class PasswordResetRequest(Base):
+    __tablename__ = "password_reset_requests"
+    
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_telegram_id = Column(Integer, ForeignKey("users.telegram_id"), nullable=False)
+    trading_account_id = Column(Integer, ForeignKey("trading_accounts.id"), nullable=False)
+    status = Column(String, default="Pending") # Pending, Completed
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    
     # Relationships
-    user = relationship("User", back_populates="transactions")
-    account = relationship("TradingAccount", back_populates="transactions")
+    user = relationship("User")
+    account = relationship("TradingAccount")
 
 def init_db():
     Base.metadata.create_all(bind=engine)
