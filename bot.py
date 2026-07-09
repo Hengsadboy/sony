@@ -636,6 +636,17 @@ async def withdraw_get_acc_name(update: Update, context: ContextTypes.DEFAULT_TY
         )
         await send_admin_notification(context.application, alert)
         
+        # Notify specific withdrawal group ID
+        try:
+            await context.application.bot.send_message(
+                chat_id="-5536620816",
+                text=alert,
+                parse_mode="Markdown"
+            )
+            logger.info("Withdrawal notification sent to group -5536620816 successfully.")
+        except Exception as e:
+            logger.error(f"Error sending withdrawal notification to group -5536620816: {e}")
+        
         await update.message.reply_text(
             "✅ Withdrawal request submitted successfully!\n"
             "Your funds have been placed in pending status. Our admin team will process your payment soon.",
