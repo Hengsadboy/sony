@@ -15,8 +15,7 @@ ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID", "-1002302341254")
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 
-# Database Configuration
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///d:/work/trading/trading.db")
-
-# Upload Configuration
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "d:/work/trading/static/uploads")
+# Database & Upload Configuration (Platform Independent)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'trading.db')}")
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", os.path.join(BASE_DIR, "static", "uploads"))
