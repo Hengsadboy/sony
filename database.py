@@ -50,6 +50,10 @@ class Transaction(Base):
     status = Column(String, default="Pending")     # Pending, Approved, Rejected
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
+    # Relationships
+    user = relationship("User", back_populates="transactions")
+    account = relationship("TradingAccount", back_populates="transactions")
+
 class PasswordResetRequest(Base):
     __tablename__ = "password_reset_requests"
     
