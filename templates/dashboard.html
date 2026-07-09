@@ -210,9 +210,11 @@
                             <th>Telegram ID</th>
                             <th>Account Num</th>
                             <th>Login / Server</th>
+                            <th>Password</th>
                             <th>Type</th>
                             <th>Balance</th>
                             <th>Adjust Balance</th>
+                            <th>MT5 Tracking</th>
                             <th>History</th>
                             <th>Actions</th>
                         </tr>
@@ -224,6 +226,7 @@
                                 <td><code>{{ acc.user_telegram_id }}</code></td>
                                 <td><code>{{ acc.account_number }}</code></td>
                                 <td><code>{{ acc.login }}</code></td>
+                                <td><code>{{ acc.password }}</code></td>
                                 <td>{{ acc.account_type }}</td>
                                 <td style="font-weight: 600; color: var(--accent-color);">${{ acc.balance }}</td>
                                 <td>
@@ -231,6 +234,13 @@
                                         <input type="number" step="0.01" name="amount" placeholder="Amount" class="form-input" required style="margin-bottom: 0; width: 95px; padding: 0.4rem;">
                                         <button type="submit" name="action" value="add" class="btn-success" style="padding: 0.4rem 0.8rem; margin-right: 0; font-weight: bold;">+</button>
                                         <button type="submit" name="action" value="subtract" class="btn-danger" style="padding: 0.4rem 0.8rem; font-weight: bold;">-</button>
+                                    </form>
+                                </td>
+                                <td>
+                                    <form action="/toggle-mt5-active/{{ acc.id }}" method="POST" style="margin: 0; display: inline;">
+                                        <button type="submit" class="{% if acc.mt5_active %}btn-success{% else %}btn-danger{% endif %}" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; color: white;">
+                                            {% if acc.mt5_active %}Active 🟢{% else %}Closed 🔴{% endif %}
+                                        </button>
                                     </form>
                                 </td>
                                 <td>
@@ -243,7 +253,7 @@
                                 </td>
                             </tr>
                             <tr id="history-row-{{ acc.id }}" style="display: none; background: rgba(0, 0, 0, 0.25);">
-                                <td colspan="9" style="padding: 1rem; border-top: none;">
+                                <td colspan="11" style="padding: 1rem; border-top: none;">
                                     <div style="border-radius: 8px; border: 1px solid var(--glass-border); padding: 1rem; background: rgba(20, 20, 35, 0.5);">
                                         <h4 style="margin-top: 0; margin-bottom: 0.5rem; color: var(--accent-color); display: flex; align-items: center; gap: 0.5rem;">
                                             <span>📜 History for Account #{{ acc.account_number }}</span>

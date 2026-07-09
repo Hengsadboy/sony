@@ -87,9 +87,13 @@ def monitor_account(acc_id):
     while True:
         db = SessionLocal()
         try:
-            acc = db.query(TradingAccount).filter(TradingAccount.id == acc_id, TradingAccount.status == "Approved").first()
-            if not acc or not acc.login or not acc.password:
-                logger.info(f"Account {acc_id} is no longer active, approved, or credentials cleared. Stopping thread.")
+            acc = db.query(TradingAccount).filter(
+                TradingAccount.id == acc_id, 
+                TradingAccount.status == "Approved",
+                TradingAccount.mt5_active == True
+            ).first()
+            if not acc or not acc.login or not acc.password or not acc.mt5_active:
+                logger.info(f"Account {acc_id} is no longer active, approved, or MT5 monitoring deactivated. Stopping thread.")
                 break
                 
             login_str = acc.login
@@ -183,8 +187,11 @@ def main_monitor_loop():
     while True:
         db = SessionLocal()
         try:
-            # Find all active approved accounts
-            accounts = db.query(TradingAccount).filter(TradingAccount.status == "Approved").all()
+            # Find all active approved accounts with MT5 monitoring enabled
+            accounts = db.query(TradingAccount).filter(
+                TradingAccount.status == "Approved", 
+                TradingAccount.mt5_active == True
+            ).all()
             active_ids = {acc.id for acc in accounts}
             
             # Start threads for new accounts

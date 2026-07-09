@@ -32,6 +32,7 @@ class TradingAccount(Base):
     password = Column(String, nullable=True)       # Filled by admin
     balance = Column(Float, default=0.0)
     status = Column(String, default="Pending")      # Pending, Approved
+    mt5_active = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     # Relationships
@@ -76,10 +77,15 @@ class SystemSetting(Base):
 def init_db():
     Base.metadata.create_all(bind=engine)
     
-    # Ensure missing language column exists in users table (migration fallback)
+    # Ensure missing columns exist in tables (migration fallback)
     db = SessionLocal()
     try:
         db.execute(text("ALTER TABLE users ADD COLUMN language VARCHAR DEFAULT 'en'"))
+        db.commit()
+    except Exception:
+        pass
+    try:
+        db.execute(text("ALTER TABLE trading_accounts ADD COLUMN mt5_active BOOLEAN DEFAULT 0"))
         db.commit()
     except Exception:
         pass

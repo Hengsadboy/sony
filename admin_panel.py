@@ -373,6 +373,16 @@ async def adjust_balance(
         
     return RedirectResponse(url="/dashboard", status_code=303)
 
+
+@app.post("/toggle-mt5-active/{acc_id}")
+async def toggle_mt5_active(acc_id: int, db: Session = Depends(get_db)):
+    acc = db.query(TradingAccount).filter(TradingAccount.id == acc_id).first()
+    if not acc:
+        raise HTTPException(status_code=404, detail="Account not found")
+    acc.mt5_active = not acc.mt5_active
+    db.commit()
+    return RedirectResponse(url="/dashboard", status_code=303)
+
 @app.post("/delete-account/{acc_id}")
 async def delete_account(acc_id: int, db: Session = Depends(get_db)):
     acc = db.query(TradingAccount).filter(TradingAccount.id == acc_id).first()
