@@ -12,8 +12,8 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8542512749:AAE5RzDNMCaqLTB
 ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID", "-1002302341254")
 
 # Admin Web Credentials
-ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "Sonytradingfx@gmail.com")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Heng@1188")
 
 # Database & Upload Configuration (Platform Independent)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
