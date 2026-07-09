@@ -153,6 +153,17 @@ async def register_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     db = SessionLocal()
     try:
+        # Enforce 1 account per Telegram profile rule
+        existing_acc = db.query(TradingAccount).filter(TradingAccount.user_telegram_id == telegram_id).first()
+        if existing_acc:
+            await message_target.reply_text(
+                "❌ *Registration Rejected*\n\n"
+                "You already have a trading account. You can only register *one trading account* per Telegram profile.",
+                reply_markup=persistent_markup,
+                parse_mode="Markdown"
+            )
+            return ConversationHandler.END
+
         # Check if user already exists
         db_user = db.query(User).filter(User.telegram_id == telegram_id).first()
         context.user_data["reg_user_exists"] = db_user is not None

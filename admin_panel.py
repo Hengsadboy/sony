@@ -97,6 +97,11 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     # Fetch overall approved accounts for reference
     all_accounts = db.query(TradingAccount).filter(TradingAccount.status == "Approved").all()
     
+    # Fetch historical processed transactions (Approved or Rejected)
+    transaction_history = db.query(Transaction).filter(
+        Transaction.status.in_(["Approved", "Rejected"])
+    ).order_by(Transaction.created_at.desc()).all()
+    
     return templates.TemplateResponse(
         request=request,
         name="dashboard.html",
@@ -104,7 +109,8 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
             "pending_registrations": pending_registrations,
             "pending_deposits": pending_deposits,
             "pending_withdrawals": pending_withdrawals,
-            "all_accounts": all_accounts
+            "all_accounts": all_accounts,
+            "transaction_history": transaction_history
         }
     )
 
