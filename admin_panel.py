@@ -49,7 +49,7 @@ async def index(request: Request):
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+    return templates.TemplateResponse(request=request, name="login.html", context={"error": None})
 
 @app.post("/login")
 async def login(
@@ -66,8 +66,9 @@ async def login(
         return response
     
     return templates.TemplateResponse(
-        "login.html",
-        {"request": request, "error": "Invalid username or password"}
+        request=request,
+        name="login.html",
+        context={"error": "Invalid username or password"}
     )
 
 @app.get("/logout")
@@ -97,9 +98,9 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     all_accounts = db.query(TradingAccount).filter(TradingAccount.status == "Approved").all()
     
     return templates.TemplateResponse(
-        "dashboard.html",
-        {
-            "request": request,
+        request=request,
+        name="dashboard.html",
+        context={
             "pending_registrations": pending_registrations,
             "pending_deposits": pending_deposits,
             "pending_withdrawals": pending_withdrawals,
