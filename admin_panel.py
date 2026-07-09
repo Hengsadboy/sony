@@ -241,13 +241,14 @@ async def approve_withdrawal(tx_id: int, db: Session = Depends(get_db)):
         user_message = (
             f"💸 *Withdrawal Approved!*\n\n"
             f"Your withdrawal of *${tx.amount:,.2f}* from account *#{acc.account_number}* has been approved and paid out.\n"
-            f"Remaining Balance: *${acc.balance:,.2f}*"
+            "Please check your bank account."
         )
         await bot.send_message(chat_id=tx.user_telegram_id, text=user_message, parse_mode="Markdown")
     except Exception as e:
         print(f"Error sending message to user: {e}")
         
     return RedirectResponse(url="/dashboard", status_code=303)
+
 
 @app.post("/reject-withdrawal/{tx_id}")
 async def reject_withdrawal(tx_id: int, db: Session = Depends(get_db)):
@@ -256,20 +257,13 @@ async def reject_withdrawal(tx_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Transaction not found")
         
     tx.status = "Rejected"
-    
-    # Return escrowed funds to balance
-    acc = db.query(TradingAccount).filter(TradingAccount.id == tx.trading_account_id).first()
-    if acc:
-        acc.balance += tx.amount
-        
     db.commit()
     
     # Send telegram message to user
     try:
         user_message = (
             f"❌ *Withdrawal Rejected*\n\n"
-            f"Your withdrawal request of *${tx.amount:,.2f}* has been rejected by the admin. "
-            f"The funds have been returned to your trading account balance."
+            f"Your withdrawal request of *${tx.amount:,.2f}* has been rejected by the admin."
         )
         await bot.send_message(chat_id=tx.user_telegram_id, text=user_message, parse_mode="Markdown")
     except Exception as e:

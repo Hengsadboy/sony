@@ -174,7 +174,6 @@ async def show_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"  • Account Number: `{acc_num}`\n"
                     f"  • Login Details: `{login}`\n"
                     f"  • Password: `{password}`\n"
-                    f"  • Balance: `${acc.balance:,.2f}`\n"
                     f"  • Status: {acc.status}\n\n"
                 )
         
@@ -418,7 +417,7 @@ async def deposit_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         keyboard = []
         for acc in accounts:
-            label = f"{acc.account_type} - #{acc.account_number} (${acc.balance:,.2f})"
+            label = f"{acc.account_type} Account - #{acc.account_number}"
             keyboard.append([InlineKeyboardButton(label, callback_data=f"depacc_{acc.id}")])
         keyboard.append([InlineKeyboardButton("❌ Cancel", callback_data="cancel_conv")])
         
@@ -630,16 +629,15 @@ async def withdraw_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     db = SessionLocal()
     try:
-        # Only approved accounts with balance > 0
+        # Fetch all approved trading accounts for the user (ignoring db balance check)
         accounts = db.query(TradingAccount).filter(
             TradingAccount.user_telegram_id == telegram_id,
-            TradingAccount.status == "Approved",
-            TradingAccount.balance > 0
+            TradingAccount.status == "Approved"
         ).all()
         
         if not accounts:
             await message_target.reply_text(
-                "❌ You do not have any approved trading accounts with a positive balance to withdraw from.",
+                "❌ You do not have any approved trading accounts to withdraw from.",
                 reply_markup=persistent_markup,
                 parse_mode="Markdown"
             )
@@ -647,7 +645,7 @@ async def withdraw_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         keyboard = []
         for acc in accounts:
-            label = f"{acc.account_type} - #{acc.account_number} (${acc.balance:,.2f})"
+            label = f"{acc.account_type} Account - #{acc.account_number}"
             keyboard.append([InlineKeyboardButton(label, callback_data=f"withacc_{acc.id}")])
         keyboard.append([InlineKeyboardButton("❌ Cancel", callback_data="cancel_conv")])
         
@@ -679,13 +677,10 @@ async def withdraw_choose_account(update: Update, context: ContextTypes.DEFAULT_
     db = SessionLocal()
     try:
         acc = db.query(TradingAccount).filter(TradingAccount.id == acc_id).first()
-        context.user_data["with_max_balance"] = acc.balance
         context.user_data["with_acc_type"] = acc.account_type
-        min_with = 5.0 if acc.account_type == "Cent" else 10.0
         await query.message.reply_text(
-            f"Balance: *${acc.balance:,.2f}*\n"
-            f"Minimum withdrawal: *${min_with:,.2f}*\n\n"
-            f"Please enter the amount you wish to withdraw:",
+            "Minimum withdrawal: *$5.00*\n\n"
+            "Please enter the amount you wish to withdraw:",
             parse_mode="Markdown"
         )
         return WITHDRAW_GET_AMOUNT
@@ -694,21 +689,13 @@ async def withdraw_choose_account(update: Update, context: ContextTypes.DEFAULT_
 
 async def withdraw_get_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     amount_str = update.message.text
-    acc_type = context.user_data.get("with_acc_type", "Cent")
-    min_with = 5.0 if acc_type == "Cent" else 10.0
+    min_with = 5.0
     try:
         amount = float(amount_str)
-        max_balance = context.user_data["with_max_balance"]
         if amount < min_with:
             await update.message.reply_text(
-                f"❌ The minimum withdrawal for a *{acc_type} Account* is *${min_with:,.2f}*.\n"
-                f"Please enter a valid amount equal or higher:"
-            )
-            return WITHDRAW_GET_AMOUNT
-        if amount > max_balance:
-            await update.message.reply_text(
-                f"❌ Insufficient funds. Your balance is ${max_balance:,.2f}.\n"
-                f"Please enter a valid amount:"
+                "❌ The minimum withdrawal is *$5.00*.\n"
+                "Please enter a valid amount equal or higher:"
             )
             return WITHDRAW_GET_AMOUNT
     except ValueError:
@@ -759,9 +746,6 @@ async def withdraw_get_acc_name(update: Update, context: ContextTypes.DEFAULT_TY
             )
             return ConversationHandler.END
             
-        # Deduct balance temporarily (escrow status) so they can't double withdraw
-        acc.balance -= amount
-        
         # Save Transaction as Pending
         new_tx = Transaction(
             user_telegram_id=telegram_id,
