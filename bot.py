@@ -12,7 +12,7 @@ from telegram.ext import (
     ContextTypes,
     ConversationHandler,
 )
-from database import init_db, SessionLocal, User, TradingAccount, Transaction, PasswordResetRequest
+from database import init_db, SessionLocal, User, TradingAccount, Transaction, PasswordResetRequest, SystemSetting
 from config import TELEGRAM_BOT_TOKEN, ADMIN_CHAT_ID, UPLOAD_DIR
 
 
@@ -63,6 +63,18 @@ async def send_admin_notification(application: Application, text: str):
         logger.error(f"Error sending admin notification: {e}")
 
 
+def is_bot_under_maintenance():
+    db = SessionLocal()
+    try:
+        setting = db.query(SystemSetting).filter(SystemSetting.key == "maintenance_mode").first()
+        return setting and setting.value == "true"
+    except Exception as e:
+        logger.error(f"Error checking maintenance status: {e}")
+        return False
+    finally:
+        db.close()
+
+
 # Persistent Bottom Menu Markup
 from telegram import ReplyKeyboardMarkup
 
@@ -76,6 +88,19 @@ persistent_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True)
 
 # --- START COMMAND ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if is_bot_under_maintenance():
+        message_target = update.message if update.message else update.callback_query.message
+        await message_target.reply_text(
+            "⚠️ *System Maintenance in Progress*\n\n"
+            "Our Telegram bot is currently undergoing maintenance/updates to improve our services.\n"
+            "All trading systems, deposits, and withdrawals remain safe. "
+            "Please try again in a little while! Thank you for your patience.",
+            parse_mode="Markdown"
+        )
+        if update.callback_query:
+            await update.callback_query.answer()
+        return
+
     user = update.effective_user
     welcome_text = (
         f"👋 Welcome *{user.first_name}* to our *Manual Forex Broker*!\n\n"
@@ -94,6 +119,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- MY ACCOUNT INFO ---
 async def show_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if is_bot_under_maintenance():
+        message_target = update.message if update.message else update.callback_query.message
+        await message_target.reply_text(
+            "⚠️ *System Maintenance in Progress*\n\n"
+            "Our Telegram bot is currently undergoing maintenance/updates to improve our services.\n"
+            "All trading systems, deposits, and withdrawals remain safe. "
+            "Please try again in a little while! Thank you for your patience.",
+            parse_mode="Markdown"
+        )
+        if update.callback_query:
+            await update.callback_query.answer()
+        return
+
     query = update.callback_query
     if query:
         await query.answer()
@@ -147,6 +185,19 @@ async def show_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- REGISTRATION FLOW ---
 async def register_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if is_bot_under_maintenance():
+        message_target = update.message if update.message else update.callback_query.message
+        await message_target.reply_text(
+            "⚠️ *System Maintenance in Progress*\n\n"
+            "Our Telegram bot is currently undergoing maintenance/updates to improve our services.\n"
+            "All trading systems, deposits, and withdrawals remain safe. "
+            "Please try again in a little while! Thank you for your patience.",
+            parse_mode="Markdown"
+        )
+        if update.callback_query:
+            await update.callback_query.answer()
+        return ConversationHandler.END
+
     query = update.callback_query
     if query:
         await query.answer()
@@ -326,6 +377,19 @@ async def register_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- DEPOSIT FLOW ---
 async def deposit_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if is_bot_under_maintenance():
+        message_target = update.message if update.message else update.callback_query.message
+        await message_target.reply_text(
+            "⚠️ *System Maintenance in Progress*\n\n"
+            "Our Telegram bot is currently undergoing maintenance/updates to improve our services.\n"
+            "All trading systems, deposits, and withdrawals remain safe. "
+            "Please try again in a little while! Thank you for your patience.",
+            parse_mode="Markdown"
+        )
+        if update.callback_query:
+            await update.callback_query.answer()
+        return ConversationHandler.END
+
     query = update.callback_query
     if query:
         await query.answer()
@@ -542,6 +606,19 @@ async def deposit_get_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 # --- WITHDRAWAL FLOW ---
 async def withdraw_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if is_bot_under_maintenance():
+        message_target = update.message if update.message else update.callback_query.message
+        await message_target.reply_text(
+            "⚠️ *System Maintenance in Progress*\n\n"
+            "Our Telegram bot is currently undergoing maintenance/updates to improve our services.\n"
+            "All trading systems, deposits, and withdrawals remain safe. "
+            "Please try again in a little while! Thank you for your patience.",
+            parse_mode="Markdown"
+        )
+        if update.callback_query:
+            await update.callback_query.answer()
+        return ConversationHandler.END
+
     query = update.callback_query
     if query:
         await query.answer()
@@ -737,6 +814,20 @@ async def withdraw_get_acc_name(update: Update, context: ContextTypes.DEFAULT_TY
 
 # --- FORGOT PASSWORD FLOW ---
 async def forgot_password_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if is_bot_under_maintenance():
+        message_target = update.message if update.message else update.callback_query.message
+        await message_target.reply_text(
+            "⚠️ *System Maintenance in Progress*\n\n"
+            "Our Telegram bot is currently undergoing maintenance/updates to improve our services.\n"
+            "All trading systems, deposits, and withdrawals remain safe. "
+            "Please try again in a little while! Thank you for your patience.",
+            parse_mode="Markdown"
+        )
+        if update.callback_query:
+            await update.callback_query.answer()
+        return ConversationHandler.END
+
+    message_target = update.message if update.message else update.callback_query.message
     info_text = (
         "🔑 *How to Reset Password:*\n"
         "1. Enter the registered email address of your profile.\n"

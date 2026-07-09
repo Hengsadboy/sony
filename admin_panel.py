@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from database import get_db, init_db, User, TradingAccount, Transaction, PasswordResetRequest
+from database import get_db, init_db, User, TradingAccount, Transaction, PasswordResetRequest, SystemSetting
 from config import ADMIN_USERNAME, ADMIN_PASSWORD, TELEGRAM_BOT_TOKEN, UPLOAD_DIR, BASE_DIR
 from telegram import Bot
 import uvicorn
@@ -109,6 +109,10 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     history_deposits = [tx for tx in history_txs if tx.type == "Deposit"]
     history_withdrawals = [tx for tx in history_txs if tx.type == "Withdrawal"]
     
+    # Fetch maintenance mode status
+    maintenance = db.query(SystemSetting).filter(SystemSetting.key == "maintenance_mode").first()
+    maintenance_enabled = maintenance and maintenance.value == "true"
+    
     return templates.TemplateResponse(
         request=request,
         name="dashboard.html",
@@ -119,7 +123,8 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
             "all_accounts": all_accounts,
             "pending_resets": pending_resets,
             "history_deposits": history_deposits,
-            "history_withdrawals": history_withdrawals
+            "history_withdrawals": history_withdrawals,
+            "maintenance_enabled": maintenance_enabled
         }
     )
 
@@ -375,12 +380,56 @@ async def check_updates(db: Session = Depends(get_db)):
     tx_count = db.query(Transaction).filter(Transaction.status == "Pending").count()
     reset_count = db.query(PasswordResetRequest).filter(PasswordResetRequest.status == "Pending").count()
     active_count = db.query(TradingAccount).filter(TradingAccount.status == "Approved").count()
+    
+    maintenance = db.query(SystemSetting).filter(SystemSetting.key == "maintenance_mode").first()
+    maintenance_status = "true" if (maintenance and maintenance.value == "true") else "false"
+    
     return {
         "pending_registrations": reg_count,
         "pending_transactions": tx_count,
         "pending_resets": reset_count,
-        "active_accounts": active_count
+        "active_accounts": active_count,
+        "maintenance_mode": maintenance_status
     }
+
+
+@app.post("/toggle-maintenance")
+async def toggle_maintenance(enabled: str = Form(...), db: Session = Depends(get_db)):
+    setting = db.query(SystemSetting).filter(SystemSetting.key == "maintenance_mode").first()
+    if not setting:
+        setting = SystemSetting(key="maintenance_mode")
+        db.add(setting)
+    setting.value = "true" if enabled == "true" else "false"
+    db.commit()
+    return RedirectResponse(url="/dashboard", status_code=303)
+
+
+@app.post("/broadcast")
+async def broadcast(
+    type: str = Form(...),
+    message: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    if type == "giveaway":
+        formatted_message = (
+            "🎁✨ *SPECIAL GIVEAWAY ALERT* ✨🎁\n\n"
+            f"{message}\n\n"
+            "🚀 *Best of luck trading!*"
+        )
+    else:
+        formatted_message = (
+            "📢 *OFFICIAL BROKER ANNOUNCEMENT* 📢\n\n"
+            f"{message}"
+        )
+        
+    users = db.query(User).all()
+    for u in users:
+        try:
+            await bot.send_message(chat_id=u.telegram_id, text=formatted_message, parse_mode="Markdown")
+        except Exception as e:
+            print(f"Failed to send broadcast to user {u.telegram_id}: {e}")
+            
+    return RedirectResponse(url="/dashboard", status_code=303)
 
 
 

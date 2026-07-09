@@ -63,8 +63,25 @@ class PasswordResetRequest(Base):
     user = relationship("User")
     account = relationship("TradingAccount")
 
+class SystemSetting(Base):
+    __tablename__ = "system_settings"
+    key = Column(String, primary_key=True)
+    value = Column(String)
+
 def init_db():
     Base.metadata.create_all(bind=engine)
+    
+    # Initialize default settings
+    db = SessionLocal()
+    try:
+        maintenance = db.query(SystemSetting).filter(SystemSetting.key == "maintenance_mode").first()
+        if not maintenance:
+            db.add(SystemSetting(key="maintenance_mode", value="false"))
+            db.commit()
+    except Exception:
+        pass
+    finally:
+        db.close()
 
 def get_db():
     db = SessionLocal()
