@@ -134,6 +134,35 @@ def init_db():
         db.commit()
     except Exception:
         pass
+        
+    # Auto-populate serial IDs for existing database records
+    try:
+        max_id = 0
+        trading_accs = db.query(TradingAccount).all()
+        for acc in trading_accs:
+            if acc.serial_id and acc.serial_id > max_id:
+                max_id = acc.serial_id
+                
+        stock_accs = db.query(AccountStock).all()
+        for item in stock_accs:
+            if item.serial_id and item.serial_id > max_id:
+                max_id = item.serial_id
+                
+        # Fill missing active accounts
+        for acc in trading_accs:
+            if not acc.serial_id:
+                max_id += 1
+                acc.serial_id = max_id
+                
+        # Fill missing stock accounts
+        for item in stock_accs:
+            if not item.serial_id:
+                max_id += 1
+                item.serial_id = max_id
+                
+        db.commit()
+    except Exception as e:
+        print(f"Error auto-populating serial IDs: {e}")
     finally:
         db.close()
         
