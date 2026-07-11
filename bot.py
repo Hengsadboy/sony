@@ -597,11 +597,24 @@ async def register_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db = SessionLocal()
     try:
         lang = get_user_lang(telegram_id, context)
-        # Enforce 1 account per Telegram profile rule
-        existing_acc = db.query(TradingAccount).filter(TradingAccount.user_telegram_id == telegram_id).first()
-        if existing_acc:
+        # Enforce 1 account of EACH type limit (Max 1 Cent, Max 1 USD)
+        cent_acc = db.query(TradingAccount).filter(
+            TradingAccount.user_telegram_id == telegram_id,
+            TradingAccount.account_type == "Cent"
+        ).first()
+        usd_acc = db.query(TradingAccount).filter(
+            TradingAccount.user_telegram_id == telegram_id,
+            TradingAccount.account_type == "USD"
+        ).first()
+        
+        if cent_acc and usd_acc:
+            msg = (
+                "⚠️ You already have the maximum allowed accounts (1 Cent and 1 USD account)!"
+                if lang == "en" else
+                "⚠️ អ្នកមានចំនួនគណនីអតិបរមាដែលអាចបង្កើតបានរួចហើយ (គណនី Cent ១ និង USD ១)!"
+            )
             await message_target.reply_text(
-                TEXTS["already_registered_limit"][lang],
+                msg,
                 reply_markup=get_persistent_markup(lang),
                 parse_mode="Markdown"
             )
@@ -633,6 +646,30 @@ async def register_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
     acc_type = query.data.split("_")[1]
     context.user_data["reg_acc_type"] = acc_type
     
+    telegram_id = query.from_user.id
+    lang = get_user_lang(telegram_id, context)
+    
+    db = SessionLocal()
+    try:
+        existing = db.query(TradingAccount).filter(
+            TradingAccount.user_telegram_id == telegram_id,
+            TradingAccount.account_type == acc_type
+        ).first()
+        if existing:
+            msg = (
+                f"⚠️ You already have a {acc_type} account! You can only have 1 account per type."
+                if lang == "en" else
+                f"⚠️ អ្នកមានគណនីប្រភេទ {acc_type} រួចហើយ! អ្នកអាចបង្កើតបានតែ ១ គណនីប៉ុណ្ណោះសម្រាប់ប្រភេទនីមួយៗ។"
+            )
+            await query.message.reply_text(
+                msg,
+                reply_markup=get_persistent_markup(lang),
+                parse_mode="Markdown"
+            )
+            return ConversationHandler.END
+    finally:
+        db.close()
+        
     if context.user_data.get("reg_user_exists"):
         # If user profile already exists, skip name and email collection, directly create the account!
         telegram_id = query.from_user.id
