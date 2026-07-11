@@ -798,117 +798,125 @@ async def register_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def register_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    acc_type = query.data.split("_")[1]
-    context.user_data["reg_acc_type"] = acc_type
     
-    telegram_id = query.from_user.id
-    lang = get_user_lang(telegram_id, context)
-    
-    db = SessionLocal()
     try:
-        existing = db.query(TradingAccount).filter(
-            TradingAccount.user_telegram_id == telegram_id,
-            TradingAccount.account_type == acc_type,
-            TradingAccount.status != "Deleted"
-        ).first()
-        if existing:
-            msg = (
-                f"⚠️ You already have a {acc_type} account! You can only have 1 account per type."
-                if lang == "en" else
-                f"⚠️ អ្នកមានគណនីប្រភេទ {acc_type} រួចហើយ! អ្នកអាចបង្កើតបានតែ ១ គណនីប៉ុណ្ណោះសម្រាប់ប្រភេទនីមួយៗ។"
-            )
-            await query.message.reply_text(
-                msg,
-                reply_markup=get_persistent_markup(lang),
-                parse_mode="Markdown"
-            )
-            return ConversationHandler.END
-    finally:
-        db.close()
+        acc_type = query.data.split("_")[1]
+        context.user_data["reg_acc_type"] = acc_type
         
-    if context.user_data.get("reg_user_exists"):
-        # If user profile already exists, skip name and email collection, directly create the account!
         telegram_id = query.from_user.id
         lang = get_user_lang(telegram_id, context)
+        
         db = SessionLocal()
         try:
-            db_user = db.query(User).filter(User.telegram_id == telegram_id).first()
-            
-            # Try to allocate from stock
-            new_acc = allocate_account_from_stock(db, telegram_id, acc_type)
-            
-            if new_acc:
-                alert = (
-                    f"🔔 *AUTO ACCOUNT ALLOCATION SUCCESS*\n"
-                    f"👤 User: {db_user.name}\n"
-                    f"📧 Email: {db_user.email}\n"
-                    f"💳 Telegram ID: `{telegram_id}`\n"
-                    f"💰 Account Type: *{acc_type}*\n"
-                    f"🔢 Assigned Account ID: `{new_acc.account_number}`\n"
-                    f"🌐 Server: `{new_acc.login}`\n"
-                    f"🔐 Password: `{new_acc.password}`\n"
-                    f"Account allocated from stock and sent to user automatically."
-                )
-                success_msg = (
-                    f"🎉 *Account Approved Automatically!*\n\n"
-                    f"Your *{acc_type}* trading account has been auto-allocated from our stock!\n"
-                    f"• Account ID: `{new_acc.account_number}`\n"
-                    f"• Server: `{new_acc.login}`\n"
-                    f"• Password: `{new_acc.password}`\n\n"
-                    f"You can now log in and start trading! Best of luck! 🚀"
+            existing = db.query(TradingAccount).filter(
+                TradingAccount.user_telegram_id == telegram_id,
+                TradingAccount.account_type == acc_type,
+                TradingAccount.status != "Deleted"
+            ).first()
+            if existing:
+                msg = (
+                    f"⚠️ You already have a {acc_type} account! You can only have 1 account per type."
                     if lang == "en" else
-                    f"🎉 *គណនីត្រូវបានអនុម័តដោយស្វ័យប្រវត្តិ!*\n\n"
-                    f"គណនីជួញដូរប្រភេទ *{acc_type}* របស់អ្នកត្រូវបានបែងចែកពីស្តុករបស់យើងរួចរាល់ហើយ!\n"
-                    f"• Account ID: `{new_acc.account_number}`\n"
-                    f"• Server: `{new_acc.login}`\n"
-                    f"• Password: `{new_acc.password}`\n\n"
-                    f"ឥឡូវនេះអ្នកអាចចូលគណនី និងចាប់ផ្តើមជួញដូរបានហើយ! សូមជូនពរអោយសំណាងល្អ! 🚀"
+                    f"⚠️ អ្នកមានគណនីប្រភេទ {acc_type} រួចហើយ! អ្នកអាចបង្កើតបានតែ ១ គណនីប៉ុណ្ណោះសម្រាប់ប្រភេទនីមួយៗ។"
                 )
-            else:
-                new_acc = TradingAccount(
-                    user_telegram_id=telegram_id,
-                    account_type=acc_type,
-                    status="Pending"
-                )
-                db.add(new_acc)
-                db.commit()
-                
-                alert = (
-                    f"🚨 *NEW TRADING ACCOUNT REQUEST (STOCK EMPTY)*\n"
-                    f"👤 Name: {db_user.name}\n"
-                    f"📧 Email: {db_user.email}\n"
-                    f"💳 Telegram ID: `{telegram_id}`\n"
-                    f"💰 Account Type: *{acc_type}*\n"
-                    f"🔢 DB Account ID: `{new_acc.id}`\n"
-                    f"Please open the Web Admin Panel to assign MT4/MT5 details."
-                )
-                success_msg = TEXTS["reg_success_out_of_stock"][lang]
-            
-            await send_admin_notification(context.application, alert)
-            
-            # Notify specific group ID
-            try:
-                group_id = get_setting("telegram_group_id", "-5536620816")
-                await context.application.bot.send_message(
-                    chat_id=group_id,
-                    text=alert,
+                await query.message.reply_text(
+                    msg,
+                    reply_markup=get_persistent_markup(lang),
                     parse_mode="Markdown"
                 )
-            except Exception as e:
-                logger.error(f"Error sending account request notification: {e}")
-            
-            await query.message.reply_text(
-                success_msg,
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back / ត្រឡប់ក្រោយ", callback_data="btn_back")]]),
-                parse_mode="Markdown"
-            )
+                return ConversationHandler.END
         finally:
             db.close()
-        return ConversationHandler.END
+            
+        if context.user_data.get("reg_user_exists"):
+            # If user profile already exists, skip name and email collection, directly create the account!
+            telegram_id = query.from_user.id
+            lang = get_user_lang(telegram_id, context)
+            db = SessionLocal()
+            try:
+                db_user = db.query(User).filter(User.telegram_id == telegram_id).first()
+                
+                # Try to allocate from stock
+                new_acc = allocate_account_from_stock(db, telegram_id, acc_type)
+                
+                if new_acc:
+                    alert = (
+                        f"🔔 *AUTO ACCOUNT ALLOCATION SUCCESS*\n"
+                        f"👤 User: {db_user.name}\n"
+                        f"📧 Email: {db_user.email}\n"
+                        f"💳 Telegram ID: `{telegram_id}`\n"
+                        f"💰 Account Type: *{acc_type}*\n"
+                        f"🔢 Assigned Account ID: `{new_acc.account_number}`\n"
+                        f"🌐 Server: `{new_acc.login}`\n"
+                        f"🔐 Password: `{new_acc.password}`\n"
+                        f"Account allocated from stock and sent to user automatically."
+                    )
+                    success_msg = (
+                        f"🎉 *Account Approved Automatically!*\n\n"
+                        f"Your *{acc_type}* trading account has been auto-allocated from our stock!\n"
+                        f"• Account ID: `{new_acc.account_number}`\n"
+                        f"• Server: `{new_acc.login}`\n"
+                        f"• Password: `{new_acc.password}`\n\n"
+                        f"You can now log in and start trading! Best of luck! 🚀"
+                        if lang == "en" else
+                        f"🎉 *គណនីត្រូវបានអនុម័តដោយស្វ័យប្រវត្តិ!*\n\n"
+                        f"គណនីជួញដូរប្រភេទ *{acc_type}* របស់អ្នកត្រូវបានបែងចែកពីស្តុករបស់យើងរួចរាល់ហើយ!\n"
+                        f"• Account ID: `{new_acc.account_number}`\n"
+                        f"• Server: `{new_acc.login}`\n"
+                        f"• Password: `{new_acc.password}`\n\n"
+                        f"ឥឡូវនេះអ្នកអាចចូលគណនី និងចាប់ផ្តើមជួញដូរបានហើយ! សូមជូនពរអោយសំណាងល្អ! 🚀"
+                    )
+                else:
+                    new_acc = TradingAccount(
+                        user_telegram_id=telegram_id,
+                        account_type=acc_type,
+                        status="Pending"
+                    )
+                    db.add(new_acc)
+                    db.commit()
+                    
+                    alert = (
+                        f"🚨 *NEW TRADING ACCOUNT REQUEST (STOCK EMPTY)*\n"
+                        f"👤 Name: {db_user.name}\n"
+                        f"📧 Email: {db_user.email}\n"
+                        f"💳 Telegram ID: `{telegram_id}`\n"
+                        f"💰 Account Type: *{acc_type}*\n"
+                        f"🔢 DB Account ID: `{new_acc.id}`\n"
+                        f"Please open the Web Admin Panel to assign MT4/MT5 details."
+                    )
+                    success_msg = TEXTS["reg_success_out_of_stock"][lang]
+                
+                await send_admin_notification(context.application, alert)
+                
+                try:
+                    group_id = get_setting("telegram_group_id", "-5536620816")
+                    await context.application.bot.send_message(
+                        chat_id=group_id,
+                        text=alert,
+                        parse_mode="Markdown"
+                    )
+                except Exception as e:
+                    logger.error(f"Error sending account request notification: {e}")
+                
+                await query.message.reply_text(
+                    success_msg,
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back / ត្រឡប់ក្រោយ", callback_data="btn_back")]]),
+                    parse_mode="Markdown"
+                )
+            finally:
+                db.close()
+            return ConversationHandler.END
 
-    lang = get_user_lang(query.from_user.id, context)
-    await query.message.reply_text(TEXTS["reg_get_name"][lang], parse_mode="Markdown")
-    return REG_GET_NAME
+        lang = get_user_lang(query.from_user.id, context)
+        await query.message.reply_text(TEXTS["reg_get_name"][lang], parse_mode="Markdown")
+        return REG_GET_NAME
+    except Exception as e:
+        logger.error(f"Error in register_type callback: {e}")
+        try:
+            await query.message.reply_text("❌ An error occurred. Please try again.")
+        except Exception:
+            pass
+        return ConversationHandler.END
 
 async def register_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = get_user_lang(update.effective_user.id, context)
