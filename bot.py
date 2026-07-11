@@ -158,6 +158,22 @@ TEXTS = {
             "អ្នកនឹងទទួលបានសារប្រាប់នៅពេលទទួលបានការអនុម័ត និងគណនីចូល។"
         )
     },
+    "reg_success_out_of_stock": {
+        "en": (
+            "⚠️ *Currently Out of Stock*\n\n"
+            "We are currently out of pre-created accounts of this type. "
+            "Your registration has been submitted and queued successfully!\n\n"
+            "Please wait for the admin to add more account stock and approve your request shortly. "
+            "Thank you for your patience! 🙏"
+        ),
+        "km": (
+            "⚠️ *អស់ស្តុកបណ្តោះអាសន្ន*\n\n"
+            "គណនីប្រភេទនេះត្រូវបានអស់ពីស្តុកហើយ។ "
+            "ការចុះឈ្មោះរបស់អ្នកត្រូវបានដាក់ជូន និងបញ្ចូលក្នុងជួររង់ចាំដោយជោគជ័យ!\n\n"
+            "សូមរង់ចាំរហូតដល់ Admin បញ្ចូលស្តុកគណនីថ្មី និងអនុម័តសំណើរបស់អ្នកក្នុងពេលឆាប់ៗនេះ។ "
+            "សូមអរគុណសម្រាប់ការព្យាយាមយល់យោគ! 🙏"
+        )
+    },
     "dep_no_accounts": {
         "en": "❌ You do not have any approved trading accounts to deposit into. Please wait for registration approval.",
         "km": "❌ អ្នកមិនទាន់មានគណនីជួញដូរដែលបានអនុម័តសម្រាប់ដាក់ប្រាក់ឡើយទេ។ សូមរង់ចាំការអនុម័តចុះឈ្មោះជាមុនសិន។"
@@ -923,13 +939,7 @@ async def register_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"🔢 DB Account ID: `{new_acc.id}`\n"
                     f"Please open the Web Admin Panel to assign MT4/MT5 details."
                 )
-                success_msg = (
-                    "✅ Your request for a new trading account has been submitted!\n"
-                    "Our admin will assign your login credentials shortly. You will be notified here."
-                    if lang == "en" else
-                    "✅ សំណើសម្រាប់គណនីជួញដូរថ្មីរបស់អ្នកត្រូវបានដាក់ជូន!\n"
-                    "ក្រុមការងារ Admin របស់យើងនឹងផ្តល់ព័ត៌មានគណនីក្នុងពេលឆាប់ៗនេះ។ អ្នកនឹងទទួលបានសារជូនដំណឹងនៅទីនេះ។"
-                )
+                success_msg = TEXTS["reg_success_out_of_stock"][lang]
             
             await send_admin_notification(context.application, alert)
             
@@ -1042,7 +1052,7 @@ async def register_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"🔢 DB Account ID: `{new_acc.id}`\n"
                 f"Please open the Web Admin Panel to approve the user and assign credentials."
             )
-            success_msg = TEXTS["reg_success"][lang]
+            success_msg = TEXTS["reg_success_out_of_stock"][lang]
             
         await send_admin_notification(context.application, alert)
         
