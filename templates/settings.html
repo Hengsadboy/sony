@@ -179,6 +179,7 @@
                                 <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
                                     <thead>
                                         <tr style="border-bottom: 1px solid var(--glass-border); text-align: left;">
+                                            <th style="padding: 0.5rem;">ID</th>
                                             <th style="padding: 0.5rem;">Account ID</th>
                                             <th style="padding: 0.5rem;">Server</th>
                                             <th style="padding: 0.5rem;">Password</th>
@@ -188,6 +189,7 @@
                                     <tbody>
                                         {% for item in cent_accounts %}
                                             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                                <td style="padding: 0.5rem;"><code>{{ "%03d"|format(loop.index) }}</code></td>
                                                 <td style="padding: 0.5rem;"><code>{{ item.account_number }}</code></td>
                                                 <td style="padding: 0.5rem;"><code>{{ item.login }}</code></td>
                                                 <td style="padding: 0.5rem;"><code>{{ item.password }}</code></td>
@@ -221,6 +223,7 @@
                                 <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
                                     <thead>
                                         <tr style="border-bottom: 1px solid var(--glass-border); text-align: left;">
+                                            <th style="padding: 0.5rem;">ID</th>
                                             <th style="padding: 0.5rem;">Account ID</th>
                                             <th style="padding: 0.5rem;">Server</th>
                                             <th style="padding: 0.5rem;">Password</th>
@@ -230,6 +233,7 @@
                                     <tbody>
                                         {% for item in usd_accounts %}
                                             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                                <td style="padding: 0.5rem;"><code>{{ "%03d"|format(loop.index) }}</code></td>
                                                 <td style="padding: 0.5rem;"><code>{{ item.account_number }}</code></td>
                                                 <td style="padding: 0.5rem;"><code>{{ item.login }}</code></td>
                                                 <td style="padding: 0.5rem;"><code>{{ item.password }}</code></td>
