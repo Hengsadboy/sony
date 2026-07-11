@@ -680,9 +680,35 @@ async def recycle_account(
         serial_id=acc.serial_id if acc.serial_id else get_next_serial_id(db)
     )
     db.add(stock_item)
+    
+    tg_id = acc.user_telegram_id
+    acc_type = acc.account_type
+    display_num = acc.account_number if acc.account_number else f"ID {acc.id}"
+    
     db.delete(acc)
     db.commit()
     
+    # Notify user of approval
+    try:
+        user = db.query(User).filter(User.telegram_id == tg_id).first()
+        lang = user.language if (user and user.language) else "en"
+        
+        if lang == "km":
+            user_message = (
+                f"🎉 *សំណើសុំលុបគណនីត្រូវបានអនុម័ត!*\n\n"
+                f"គណនីជួញដូរប្រភេទ *{acc_type}* ({display_num}) របស់អ្នកត្រូវបានលុបចេញពីប្រព័ន្ធដោយជោគជ័យហើយ។\n\n"
+                f"ឥឡូវនេះអ្នកអាចចុះឈ្មោះបង្កើតគណនីថ្មីសម្រាប់ប្រភេទនេះបានហើយ! 🚀"
+            )
+        else:
+            user_message = (
+                f"🎉 *Account Deletion Approved!*\n\n"
+                f"Your *{acc_type}* trading account ({display_num}) has been successfully deleted and cleared from our system.\n\n"
+                f"You are now allowed to register a new account of this type! 🚀"
+            )
+        await bot.send_message(chat_id=tg_id, text=user_message, parse_mode="Markdown")
+    except Exception as e:
+        print(f"Error sending deletion approval message to user: {e}")
+        
     return RedirectResponse(url="/", status_code=303)
 
 
