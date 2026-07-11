@@ -551,7 +551,7 @@ async def join_giveaway_callback(update: Update, context: ContextTypes.DEFAULT_T
 
 def allocate_account_from_stock(db, telegram_id, acc_type):
     # Find one available account in stock matching chosen type (Cent/USD)
-    stock_item = db.query(AccountStock).filter(AccountStock.account_type == acc_type).first()
+    stock_item = db.query(AccountStock).filter(AccountStock.account_type.ilike(acc_type.strip())).first()
     if stock_item:
         # Create approved account using the pre-created credentials
         new_acc = TradingAccount(
