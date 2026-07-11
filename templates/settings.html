@@ -103,6 +103,20 @@
             </div>
         </div>
 
+<style>
+.stock-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 2rem;
+}
+@media (max-width: 900px) {
+    .stock-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1.5rem;
+    }
+}
+</style>
+
         <!-- Account Stock Management Section -->
         <div style="margin-top: 2rem; background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 2rem;">
             <h2 class="section-title">📦 Pre-Created Account Stock</h2>
@@ -110,7 +124,7 @@
                 Stock pre-created MetaTrader 5 accounts here. When customers request to register an account in the bot, the bot will automatically allocate one from this stock and send it to them immediately!
             </p>
 
-            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem;">
+            <div class="stock-grid">
                 <!-- Form to Add Account to Stock -->
                 <div style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--glass-border);">
                     <h3>Add Pre-created Account</h3>
