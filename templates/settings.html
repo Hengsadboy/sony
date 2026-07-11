@@ -140,40 +140,119 @@
 
                 <!-- Stock List Table -->
                 <div style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--glass-border);">
-                    <h3>Current Stock ({{ stock_accounts|length }} accounts)</h3>
-                    {% if not stock_accounts %}
-                        <p style="color: var(--text-muted); font-size: 0.9rem; font-style: italic; margin-top: 1rem;">No accounts in stock. Registrations will fall back to manual pending approval.</p>
-                    {% else %}
-                        <div style="overflow-x: auto; margin-top: 1rem;">
-                            <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
-                                <thead>
-                                    <tr style="border-bottom: 1px solid var(--glass-border); text-align: left;">
-                                        <th style="padding: 0.5rem;">Account ID</th>
-                                        <th style="padding: 0.5rem;">Server</th>
-                                        <th style="padding: 0.5rem;">Password</th>
-                                        <th style="padding: 0.5rem;">Type</th>
-                                        <th style="padding: 0.5rem;">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for item in stock_accounts %}
-                                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                                            <td style="padding: 0.5rem;"><code>{{ item.account_number }}</code></td>
-                                            <td style="padding: 0.5rem;"><code>{{ item.login }}</code></td>
-                                            <td style="padding: 0.5rem;"><code>{{ item.password }}</code></td>
-                                            <td style="padding: 0.5rem;"><span class="pill pill-approved">{{ item.account_type }}</span></td>
-                                            <td style="padding: 0.5rem;">
-                                                <form action="/delete-stock/{{ item.id }}" method="POST" style="margin: 0; display: inline;">
-                                                    <button type="submit" class="btn-danger" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; border: none; border-radius: 4px; cursor: pointer; color: white;">Remove</button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.8rem; margin-bottom: 1rem;">
+                        <h3 style="margin: 0;">Current Stock</h3>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="button" id="tab-btn-cent" class="btn-primary" onclick="switchStockTab('cent')" style="margin: 0; padding: 0.3rem 0.8rem; font-size: 0.8rem; background: var(--accent-color);">Cent Stock</button>
+                            <button type="button" id="tab-btn-usd" class="btn-primary" onclick="switchStockTab('usd')" style="margin: 0; padding: 0.3rem 0.8rem; font-size: 0.8rem; background: rgba(255,255,255,0.1);">USD Stock</button>
                         </div>
-                    {% endif %}
+                    </div>
+
+                    <!-- Cent Stock Tab Content -->
+                    <div id="stock-tab-cent">
+                        {% set cent_accounts = [] %}
+                        {% for item in stock_accounts %}
+                            {% if item.account_type.lower() == 'cent' %}
+                                {% set _ = cent_accounts.append(item) %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        <h4 style="margin-top: 0; color: var(--text-muted);">🪙 Cent Accounts in Stock ({{ cent_accounts|length }})</h4>
+                        {% if not cent_accounts %}
+                            <p style="color: var(--text-muted); font-size: 0.9rem; font-style: italic;">No Cent accounts in stock.</p>
+                        {% else %}
+                            <div style="overflow-x: auto;">
+                                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid var(--glass-border); text-align: left;">
+                                            <th style="padding: 0.5rem;">Account ID</th>
+                                            <th style="padding: 0.5rem;">Server</th>
+                                            <th style="padding: 0.5rem;">Password</th>
+                                            <th style="padding: 0.5rem;">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in cent_accounts %}
+                                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                                <td style="padding: 0.5rem;"><code>{{ item.account_number }}</code></td>
+                                                <td style="padding: 0.5rem;"><code>{{ item.login }}</code></td>
+                                                <td style="padding: 0.5rem;"><code>{{ item.password }}</code></td>
+                                                <td style="padding: 0.5rem;">
+                                                    <form action="/delete-stock/{{ item.id }}" method="POST" style="margin: 0; display: inline;">
+                                                        <button type="submit" class="btn-danger" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; border: none; border-radius: 4px; cursor: pointer; color: white;">Remove</button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- USD Stock Tab Content -->
+                    <div id="stock-tab-usd" style="display: none;">
+                        {% set usd_accounts = [] %}
+                        {% for item in stock_accounts %}
+                            {% if item.account_type.lower() == 'usd' %}
+                                {% set _ = usd_accounts.append(item) %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        <h4 style="margin-top: 0; color: var(--text-muted);">💵 USD Accounts in Stock ({{ usd_accounts|length }})</h4>
+                        {% if not usd_accounts %}
+                            <p style="color: var(--text-muted); font-size: 0.9rem; font-style: italic;">No USD accounts in stock.</p>
+                        {% else %}
+                            <div style="overflow-x: auto;">
+                                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid var(--glass-border); text-align: left;">
+                                            <th style="padding: 0.5rem;">Account ID</th>
+                                            <th style="padding: 0.5rem;">Server</th>
+                                            <th style="padding: 0.5rem;">Password</th>
+                                            <th style="padding: 0.5rem;">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in usd_accounts %}
+                                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                                <td style="padding: 0.5rem;"><code>{{ item.account_number }}</code></td>
+                                                <td style="padding: 0.5rem;"><code>{{ item.login }}</code></td>
+                                                <td style="padding: 0.5rem;"><code>{{ item.password }}</code></td>
+                                                <td style="padding: 0.5rem;">
+                                                    <form action="/delete-stock/{{ item.id }}" method="POST" style="margin: 0; display: inline;">
+                                                        <button type="submit" class="btn-danger" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; border: none; border-radius: 4px; cursor: pointer; color: white;">Remove</button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
+
+                <script>
+                function switchStockTab(type) {
+                    const centTab = document.getElementById('stock-tab-cent');
+                    const usdTab = document.getElementById('stock-tab-usd');
+                    const centBtn = document.getElementById('tab-btn-cent');
+                    const usdBtn = document.getElementById('tab-btn-usd');
+                    
+                    if (type === 'cent') {
+                        centTab.style.display = 'block';
+                        usdTab.style.display = 'none';
+                        centBtn.style.background = 'var(--accent-color)';
+                        usdBtn.style.background = 'rgba(255,255,255,0.1)';
+                    } else {
+                        centTab.style.display = 'none';
+                        usdTab.style.display = 'block';
+                        centBtn.style.background = 'rgba(255,255,255,0.1)';
+                        usdBtn.style.background = 'var(--accent-color)';
+                    }
+                }
+                </script>
             </div>
         </div>
     </div>
