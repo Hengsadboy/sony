@@ -549,6 +549,27 @@ async def join_giveaway_callback(update: Update, context: ContextTypes.DEFAULT_T
         db.close()
 
 
+def allocate_account_from_stock(db, telegram_id, acc_type):
+    # Find one available account in stock matching chosen type (Cent/USD)
+    stock_item = db.query(AccountStock).filter(AccountStock.account_type == acc_type).first()
+    if stock_item:
+        # Create approved account using the pre-created credentials
+        new_acc = TradingAccount(
+            user_telegram_id=telegram_id,
+            account_type=acc_type,
+            account_number=stock_item.account_number,
+            login=stock_item.login,
+            password=stock_item.password,
+            status="Approved"
+        )
+        db.add(new_acc)
+        # Delete from stock
+        db.delete(stock_item)
+        db.commit()
+        return new_acc
+    return None
+
+
 # --- REGISTRATION FLOW ---
 async def register_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if is_bot_under_maintenance():
@@ -619,24 +640,63 @@ async def register_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
         db = SessionLocal()
         try:
             db_user = db.query(User).filter(User.telegram_id == telegram_id).first()
-            new_acc = TradingAccount(
-                user_telegram_id=telegram_id,
-                account_type=acc_type,
-                status="Pending"
-            )
-            db.add(new_acc)
-            db.commit()
             
-            # Send notification
-            alert = (
-                f"🚨 *NEW TRADING ACCOUNT REQUEST*\n"
-                f"👤 Name: {db_user.name}\n"
-                f"📧 Email: {db_user.email}\n"
-                f"💳 Telegram ID: `{telegram_id}`\n"
-                f"💰 Account Type: *{acc_type}*\n"
-                f"🔢 DB Account ID: `{new_acc.id}`\n"
-                f"Please open the Web Admin Panel to assign MT4/MT5 details."
-            )
+            # Try to allocate from stock
+            new_acc = allocate_account_from_stock(db, telegram_id, acc_type)
+            
+            if new_acc:
+                alert = (
+                    f"🔔 *AUTO ACCOUNT ALLOCATION SUCCESS*\n"
+                    f"👤 User: {db_user.name}\n"
+                    f"📧 Email: {db_user.email}\n"
+                    f"💳 Telegram ID: `{telegram_id}`\n"
+                    f"💰 Account Type: *{acc_type}*\n"
+                    f"🔢 Assigned Account ID: `{new_acc.account_number}`\n"
+                    f"🌐 Server: `{new_acc.login}`\n"
+                    f"🔐 Password: `{new_acc.password}`\n"
+                    f"Account allocated from stock and sent to user automatically."
+                )
+                success_msg = (
+                    f"🎉 *Account Approved Automatically!*\n\n"
+                    f"Your *{acc_type}* trading account has been auto-allocated from our stock!\n"
+                    f"• Account ID: `{new_acc.account_number}`\n"
+                    f"• Server: `{new_acc.login}`\n"
+                    f"• Password: `{new_acc.password}`\n\n"
+                    f"You can now log in and start trading! Best of luck! 🚀"
+                    if lang == "en" else
+                    f"🎉 *គណនីត្រូវបានអនុម័តដោយស្វ័យប្រវត្តិ!*\n\n"
+                    f"គណនីជួញដូរប្រភេទ *{acc_type}* របស់អ្នកត្រូវបានបែងចែកពីស្តុករបស់យើងរួចរាល់ហើយ!\n"
+                    f"• Account ID: `{new_acc.account_number}`\n"
+                    f"• Server: `{new_acc.login}`\n"
+                    f"• Password: `{new_acc.password}`\n\n"
+                    f"ឥឡូវនេះអ្នកអាចចូលគណនី និងចាប់ផ្តើមជួញដូរបានហើយ! សូមជូនពរអោយសំណាងល្អ! 🚀"
+                )
+            else:
+                new_acc = TradingAccount(
+                    user_telegram_id=telegram_id,
+                    account_type=acc_type,
+                    status="Pending"
+                )
+                db.add(new_acc)
+                db.commit()
+                
+                alert = (
+                    f"🚨 *NEW TRADING ACCOUNT REQUEST (STOCK EMPTY)*\n"
+                    f"👤 Name: {db_user.name}\n"
+                    f"📧 Email: {db_user.email}\n"
+                    f"💳 Telegram ID: `{telegram_id}`\n"
+                    f"💰 Account Type: *{acc_type}*\n"
+                    f"🔢 DB Account ID: `{new_acc.id}`\n"
+                    f"Please open the Web Admin Panel to assign MT4/MT5 details."
+                )
+                success_msg = (
+                    "✅ Your request for a new trading account has been submitted!\n"
+                    "Our admin will assign your login credentials shortly. You will be notified here."
+                    if lang == "en" else
+                    "✅ សំណើសម្រាប់គណនីជួញដូរថ្មីរបស់អ្នកត្រូវបានដាក់ជូន!\n"
+                    "ក្រុមការងារ Admin របស់យើងនឹងផ្តល់ព័ត៌មានគណនីក្នុងពេលឆាប់ៗនេះ។ អ្នកនឹងទទួលបានសារជូនដំណឹងនៅទីនេះ។"
+                )
+            
             await send_admin_notification(context.application, alert)
             
             # Notify specific group ID
@@ -649,14 +709,6 @@ async def register_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             except Exception as e:
                 logger.error(f"Error sending account request notification: {e}")
-            
-            success_msg = (
-                "✅ Your request for a new trading account has been submitted!\n"
-                "Our admin will assign your login credentials shortly. You will be notified here."
-                if lang == "en" else
-                "✅ សំណើសម្រាប់គណនីជួញដូរថ្មីរបស់អ្នកត្រូវបានដាក់ជូន!\n"
-                "ក្រុមការងារ Admin របស់យើងនឹងផ្តល់ព័ត៌មានគណនីក្នុងពេលឆាប់ៗនេះ។ អ្នកនឹងទទួលបានសារជូនដំណឹងនៅទីនេះ។"
-            )
             
             await query.message.reply_text(
                 success_msg,
@@ -707,25 +759,57 @@ async def register_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         db.add(new_user)
         
-        # Save Trading Account
-        new_acc = TradingAccount(
-            user_telegram_id=telegram_id,
-            account_type=acc_type,
-            status="Pending"
-        )
-        db.add(new_acc)
-        db.commit()
+        # Try to allocate from stock
+        new_acc = allocate_account_from_stock(db, telegram_id, acc_type)
         
-        # Admin Alert
-        alert = (
-            f"🚨 *NEW REGISTRATION REQUEST*\n"
-            f"👤 Name: {name}\n"
-            f"📧 Email: {email}\n"
-            f"💳 Telegram ID: `{telegram_id}`\n"
-            f"💰 Account Type: *{acc_type}*\n"
-            f"🔢 DB Account ID: `{new_acc.id}`\n"
-            f"Please open the Web Admin Panel to approve the user and assign credentials."
-        )
+        if new_acc:
+            alert = (
+                f"🔔 *AUTO ACCOUNT ALLOCATION SUCCESS*\n"
+                f"👤 Name: {name}\n"
+                f"📧 Email: {email}\n"
+                f"💳 Telegram ID: `{telegram_id}`\n"
+                f"💰 Account Type: *{acc_type}*\n"
+                f"🔢 Assigned Account ID: `{new_acc.account_number}`\n"
+                f"🌐 Server: `{new_acc.login}`\n"
+                f"🔐 Password: `{new_acc.password}`\n"
+                f"Account allocated from stock and sent to user automatically."
+            )
+            success_msg = (
+                f"🎉 *Account Approved Automatically!*\n\n"
+                f"Your *{acc_type}* trading account has been auto-allocated from our stock!\n"
+                f"• Account ID: `{new_acc.account_number}`\n"
+                f"• Server: `{new_acc.login}`\n"
+                f"• Password: `{new_acc.password}`\n\n"
+                f"You can now log in and start trading! Best of luck! 🚀"
+                if lang == "en" else
+                f"🎉 *គណនីត្រូវបានអនុម័តដោយស្វ័យប្រវត្តិ!*\n\n"
+                f"គណនីជួញដូរប្រភេទ *{acc_type}* របស់អ្នកត្រូវបានបែងចែកពីស្តុករបស់យើងរួចរាល់ហើយ!\n"
+                f"• Account ID: `{new_acc.account_number}`\n"
+                f"• Server: `{new_acc.login}`\n"
+                f"• Password: `{new_acc.password}`\n\n"
+                f"ឥឡូវនេះអ្នកអាចចូលគណនី និងចាប់ផ្តើមជួញដូរបានហើយ! សូមជូនពរអោយសំណាងល្អ! 🚀"
+            )
+        else:
+            # Save Trading Account
+            new_acc = TradingAccount(
+                user_telegram_id=telegram_id,
+                account_type=acc_type,
+                status="Pending"
+            )
+            db.add(new_acc)
+            db.commit()
+            
+            alert = (
+                f"🚨 *NEW REGISTRATION REQUEST (STOCK EMPTY)*\n"
+                f"👤 Name: {name}\n"
+                f"📧 Email: {email}\n"
+                f"💳 Telegram ID: `{telegram_id}`\n"
+                f"💰 Account Type: *{acc_type}*\n"
+                f"🔢 DB Account ID: `{new_acc.id}`\n"
+                f"Please open the Web Admin Panel to approve the user and assign credentials."
+            )
+            success_msg = TEXTS["reg_success"][lang]
+            
         await send_admin_notification(context.application, alert)
         
         # Notify specific group ID
@@ -740,7 +824,7 @@ async def register_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.error(f"Error sending registration notification: {e}")
             
         await update.message.reply_text(
-            TEXTS["reg_success"][lang],
+            success_msg,
             reply_markup=get_persistent_markup(lang),
             parse_mode="Markdown"
         )

@@ -93,6 +93,15 @@ class GiveawayParticipant(Base):
     user_name = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
+class AccountStock(Base):
+    __tablename__ = "account_stock"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    account_number = Column(String, nullable=False, unique=True)
+    login = Column(String, nullable=False)
+    password = Column(String, nullable=False)
+    account_type = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
 def init_db():
     Base.metadata.create_all(bind=engine)
     

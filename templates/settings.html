@@ -102,6 +102,80 @@
                 </form>
             </div>
         </div>
+
+        <!-- Account Stock Management Section -->
+        <div style="margin-top: 2rem; background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 2rem;">
+            <h2 class="section-title">📦 Pre-Created Account Stock</h2>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.5rem;">
+                Stock pre-created MetaTrader 5 accounts here. When customers request to register an account in the bot, the bot will automatically allocate one from this stock and send it to them immediately!
+            </p>
+
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem;">
+                <!-- Form to Add Account to Stock -->
+                <div style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--glass-border);">
+                    <h3>Add Pre-created Account</h3>
+                    <form action="/add-stock" method="POST" style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1rem;">
+                        <div>
+                            <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.3rem;">Account ID</label>
+                            <input type="text" name="account_number" placeholder="e.g. 246252170" class="form-input" required style="margin-bottom: 0;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.3rem;">Server</label>
+                            <input type="text" name="login" placeholder="e.g. Exness-MT5Real124" class="form-input" required style="margin-bottom: 0;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.3rem;">Password</label>
+                            <input type="text" name="password" placeholder="e.g. Password#1" class="form-input" required style="margin-bottom: 0;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.3rem;">Account Type</label>
+                            <select name="account_type" class="form-input" required style="margin-bottom: 0; background: var(--bg-color); color: white; border: 1px solid var(--glass-border);">
+                                <option value="Cent">Cent</option>
+                                <option value="USD">USD</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-success" style="margin-top: 0.5rem; padding: 0.5rem; font-weight: bold;">Add to Stock ➕</button>
+                    </form>
+                </div>
+
+                <!-- Stock List Table -->
+                <div style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--glass-border);">
+                    <h3>Current Stock ({{ stock_accounts|length }} accounts)</h3>
+                    {% if not stock_accounts %}
+                        <p style="color: var(--text-muted); font-size: 0.9rem; font-style: italic; margin-top: 1rem;">No accounts in stock. Registrations will fall back to manual pending approval.</p>
+                    {% else %}
+                        <div style="overflow-x: auto; margin-top: 1rem;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid var(--glass-border); text-align: left;">
+                                        <th style="padding: 0.5rem;">Account ID</th>
+                                        <th style="padding: 0.5rem;">Server</th>
+                                        <th style="padding: 0.5rem;">Password</th>
+                                        <th style="padding: 0.5rem;">Type</th>
+                                        <th style="padding: 0.5rem;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in stock_accounts %}
+                                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                            <td style="padding: 0.5rem;"><code>{{ item.account_number }}</code></td>
+                                            <td style="padding: 0.5rem;"><code>{{ item.login }}</code></td>
+                                            <td style="padding: 0.5rem;"><code>{{ item.password }}</code></td>
+                                            <td style="padding: 0.5rem;"><span class="pill pill-approved">{{ item.account_type }}</span></td>
+                                            <td style="padding: 0.5rem;">
+                                                <form action="/delete-stock/{{ item.id }}" method="POST" style="margin: 0; display: inline;">
+                                                    <button type="submit" class="btn-danger" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; border: none; border-radius: 4px; cursor: pointer; color: white;">Remove</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

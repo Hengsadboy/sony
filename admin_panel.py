@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from database import get_db, init_db, User, TradingAccount, Transaction, PasswordResetRequest, SystemSetting, Giveaway, GiveawayParticipant
+from database import get_db, init_db, User, TradingAccount, Transaction, PasswordResetRequest, SystemSetting, Giveaway, GiveawayParticipant, AccountStock
 from config import ADMIN_USERNAME, ADMIN_PASSWORD, TELEGRAM_BOT_TOKEN, UPLOAD_DIR, BASE_DIR
 from telegram import Bot
 import uvicorn
@@ -490,6 +490,8 @@ async def settings_page(request: Request, db: Session = Depends(get_db)):
     welcome_msg_km_setting = db.query(SystemSetting).filter(SystemSetting.key == "welcome_msg_km").first()
     welcome_msg_km = welcome_msg_km_setting.value if welcome_msg_km_setting else "👋 សូមស្វាគមន៍ *{name}* មកកាន់ *Manual Forex Broker* របស់យើង!"
     
+    stock_accounts = db.query(AccountStock).order_by(AccountStock.created_at.desc()).all()
+    
     return templates.TemplateResponse(
         request=request,
         name="settings.html",
@@ -499,7 +501,8 @@ async def settings_page(request: Request, db: Session = Depends(get_db)):
             "telegram_group_id": telegram_group_id,
             "telegram_bot_token": telegram_bot_token,
             "welcome_msg_en": welcome_msg_en,
-            "welcome_msg_km": welcome_msg_km
+            "welcome_msg_km": welcome_msg_km,
+            "stock_accounts": stock_accounts
         }
     )
 
@@ -590,6 +593,53 @@ async def update_settings(
         setting.value = val.strip()
     db.commit()
     
+    return RedirectResponse(url="/settings", status_code=303)
+
+
+@app.post("/add-stock")
+async def add_stock(
+    request: Request,
+    account_number: str = Form(...),
+    login: str = Form(...),
+    password: str = Form(...),
+    account_type: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    try:
+        get_current_admin(request)
+    except HTTPException:
+        return RedirectResponse(url="/login", status_code=303)
+        
+    exists = db.query(AccountStock).filter(AccountStock.account_number == account_number.strip()).first()
+    if exists:
+        return HTMLResponse("Account already exists in stock!", status_code=400)
+        
+    stock_item = AccountStock(
+        account_number=account_number.strip(),
+        login=login.strip(),
+        password=password.strip(),
+        account_type=account_type.strip()
+    )
+    db.add(stock_item)
+    db.commit()
+    return RedirectResponse(url="/settings", status_code=303)
+
+
+@app.post("/delete-stock/{stock_id}")
+async def delete_stock(
+    request: Request,
+    stock_id: int,
+    db: Session = Depends(get_db)
+):
+    try:
+        get_current_admin(request)
+    except HTTPException:
+        return RedirectResponse(url="/login", status_code=303)
+        
+    stock_item = db.query(AccountStock).filter(AccountStock.id == stock_id).first()
+    if stock_item:
+        db.delete(stock_item)
+        db.commit()
     return RedirectResponse(url="/settings", status_code=303)
 
 
