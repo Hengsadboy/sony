@@ -12,7 +12,7 @@ from telegram.ext import (
     ContextTypes,
     ConversationHandler,
 )
-from database import init_db, SessionLocal, User, TradingAccount, Transaction, PasswordResetRequest, SystemSetting, get_setting
+from database import init_db, SessionLocal, User, TradingAccount, Transaction, PasswordResetRequest, SystemSetting, get_setting, Giveaway, GiveawayParticipant
 from config import TELEGRAM_BOT_TOKEN, ADMIN_CHAT_ID, UPLOAD_DIR
 
 
@@ -445,6 +445,60 @@ async def show_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if update.callback_query:
             await update.callback_query.answer()
         return
+
+async def join_giveaway_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    data = query.data
+    giveaway_id = int(data.split(":")[1])
+    telegram_id = query.from_user.id
+    user_name = query.from_user.first_name or "User"
+    
+    db = SessionLocal()
+    try:
+        lang = get_user_lang(telegram_id, context)
+        giveaway = db.query(Giveaway).filter(Giveaway.id == giveaway_id).first()
+        if not giveaway:
+            await query.message.reply_text("❌ Giveaway not found / រកមិនឃើញការចាប់រង្វាន់")
+            return
+            
+        if giveaway.status != "Active":
+            msg = (
+                "❌ This giveaway has ended! Winner was already chosen.\n"
+                "❌ ការចាប់រង្វាន់នេះបានបញ្ចប់ហើយ! អ្នកឈ្នះត្រូវបានជ្រើសរើសរួចហើយ។"
+            )
+            await query.message.reply_text(msg)
+            return
+            
+        # Check if already joined
+        exists = db.query(GiveawayParticipant).filter(
+            GiveawayParticipant.giveaway_id == giveaway_id,
+            GiveawayParticipant.user_telegram_id == telegram_id
+        ).first()
+        
+        if exists:
+            msg = (
+                "⚠️ You have already joined this giveaway!\n"
+                "⚠️ អ្នកបានចូលរួមការចាប់រង្វាន់នេះរួចរាល់ហើយ!"
+            )
+            await query.message.reply_text(msg)
+        else:
+            participant = GiveawayParticipant(
+                giveaway_id=giveaway_id,
+                user_telegram_id=telegram_id,
+                user_name=user_name
+            )
+            db.add(participant)
+            db.commit()
+            msg = (
+                "✅ You have successfully joined the giveaway! Best of luck! 🎁\n"
+                "✅ អ្នកបានចូលរួមការចាប់រង្វាន់ដោយជោគជ័យ! សូមជូនពរអោយសំណាងល្អ! 🎁"
+            )
+            await query.message.reply_text(msg)
+    finally:
+        db.close()
+
 
     query = update.callback_query
     if query:
@@ -1249,12 +1303,108 @@ application_instance = None
 class PatchedApplication(Application):
     __slots__ = ("_Application__stop_running_marker", "__stop_running_marker")
 
+async def giveaway_checker_loop():
+    import asyncio
+    import datetime
+    import random
+    from database import get_setting
+    from config import TELEGRAM_BOT_TOKEN
+    from telegram import Bot
+    
+    logger.info("Giveaway checker loop started.")
+    
+    while True:
+        try:
+            db = SessionLocal()
+            try:
+                active_giveaways = db.query(Giveaway).filter(Giveaway.status == "Active").all()
+                now = datetime.datetime.utcnow()
+                
+                for g in active_giveaways:
+                    end_time = g.created_at + datetime.timedelta(minutes=g.duration_minutes)
+                    if now >= end_time:
+                        logger.info(f"Giveaway {g.id} has ended. Choosing winner...")
+                        g.status = "Ended"
+                        
+                        participants = db.query(GiveawayParticipant).filter(
+                            GiveawayParticipant.giveaway_id == g.id
+                        ).all()
+                        
+                        token = get_setting("telegram_bot_token", TELEGRAM_BOT_TOKEN)
+                        temp_bot = Bot(token=token)
+                        
+                        if participants:
+                            winner = random.choice(participants)
+                            g.winner_telegram_id = winner.user_telegram_id
+                            g.winner_name = winner.user_name
+                            
+                            announcement_en = (
+                                "🎉 *GIVEAWAY WINNER ANNOUNCEMENT* 🎉\n\n"
+                                f"The giveaway has ended!\n"
+                                f"Congratulations to our winner: *{winner.user_name}* (Telegram ID: `{winner.user_telegram_id}`)\n\n"
+                                "🎁 *Wait for admin to credit the prize money to your trading account!*"
+                            )
+                            announcement_km = (
+                                "🎉 *ដំណឹងប្រកាសអ្នកឈ្នះរង្វាន់* 🎉\n\n"
+                                "ការចាប់រង្វាន់ត្រូវបានបញ្ចប់!\n"
+                                f"សូមអបអរសាទរដល់អ្នកឈ្នះរបស់យើង៖ *{winner.user_name}* (Telegram ID: `{winner.user_telegram_id}`)\n\n"
+                                "🎁 *សូមរង់ចាំ Admin បញ្ចូលប្រាក់រង្វាន់ទៅក្នុងគណនីជួញដូររបស់អ្នក!*"
+                            )
+                            
+                            admin_group_id = get_setting("telegram_group_id", "-5536620816")
+                            admin_alert = (
+                                f"🔔 *Giveaway #{g.id} Ended!*\n\n"
+                                f"Winner: *{winner.user_name}*\n"
+                                f"Telegram ID: `{winner.user_telegram_id}`\n\n"
+                                "Please credit the prize money to their account."
+                            )
+                        else:
+                            announcement_en = (
+                                "🎉 *GIVEAWAY ENDED* 🎉\n\n"
+                                "The giveaway has ended, but unfortunately no one joined this time."
+                            )
+                            announcement_km = (
+                                "🎉 *ការចាប់រង្វាន់បានបញ្ចប់* 🎉\n\n"
+                                "ការចាប់រង្វាន់បានបញ្ចប់ ប៉ុន្តែគ្មាននរណាម្នាក់បានចូលរួមនោះទេ។"
+                            )
+                            
+                            admin_group_id = get_setting("telegram_group_id", "-5536620816")
+                            admin_alert = f"🔔 *Giveaway #{g.id} Ended!* No participants joined."
+                            
+                        db.commit()
+                        
+                        # Broadcast announcement to all users
+                        users = db.query(User).all()
+                        for u in users:
+                            try:
+                                msg = announcement_km if u.language == "km" else announcement_en
+                                await temp_bot.send_message(chat_id=u.telegram_id, text=msg, parse_mode="Markdown")
+                            except Exception as be:
+                                logger.error(f"Failed to send winner announcement to user {u.telegram_id}: {be}")
+                                
+                        # Send alert to Admin group
+                        try:
+                            await temp_bot.send_message(chat_id=admin_group_id, text=admin_alert, parse_mode="Markdown")
+                        except Exception as ae:
+                            logger.error(f"Failed to send admin alert to group {admin_group_id}: {ae}")
+                            
+            finally:
+                db.close()
+        except Exception as e:
+            logger.error(f"Error in giveaway checker loop: {e}")
+            
+        await asyncio.sleep(10)
+
+async def post_init(application: Application):
+    import asyncio
+    asyncio.create_task(giveaway_checker_loop())
+
 def run_bot():
     global application_instance
     init_db()
     
     token = get_setting("telegram_bot_token", TELEGRAM_BOT_TOKEN)
-    application = Application.builder().token(token).application_class(PatchedApplication).build()
+    application = Application.builder().token(token).application_class(PatchedApplication).post_init(post_init).build()
     application_instance = application
 
     
@@ -1319,6 +1469,7 @@ def run_bot():
     application.add_handler(CallbackQueryHandler(set_language, pattern="^lang_"))
     application.add_handler(CallbackQueryHandler(start, pattern="^btn_back$"))
     application.add_handler(CallbackQueryHandler(show_info, pattern="^btn_info$"))
+    application.add_handler(CallbackQueryHandler(join_giveaway_callback, pattern="^join_giveaway:"))
     application.add_handler(MessageHandler(filters.Regex("^(ℹ️ My Account Info|ℹ️ ព័ត៌មានគណនី)$"), show_info))
     
     # Add Conversations

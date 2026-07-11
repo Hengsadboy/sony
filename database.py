@@ -75,6 +75,24 @@ class SystemSetting(Base):
     key = Column(String, primary_key=True)
     value = Column(String)
 
+class Giveaway(Base):
+    __tablename__ = "giveaways"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    message = Column(String, nullable=False)
+    duration_minutes = Column(Integer, default=60)
+    status = Column(String, default="Active")  # Active, Ended
+    winner_telegram_id = Column(Integer, nullable=True)
+    winner_name = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    
+class GiveawayParticipant(Base):
+    __tablename__ = "giveaway_participants"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    giveaway_id = Column(Integer, ForeignKey("giveaways.id"), nullable=False)
+    user_telegram_id = Column(Integer, ForeignKey("users.telegram_id"), nullable=False)
+    user_name = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
 def init_db():
     Base.metadata.create_all(bind=engine)
     

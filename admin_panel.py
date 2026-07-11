@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from database import get_db, init_db, User, TradingAccount, Transaction, PasswordResetRequest, SystemSetting
+from database import get_db, init_db, User, TradingAccount, Transaction, PasswordResetRequest, SystemSetting, Giveaway, GiveawayParticipant
 from config import ADMIN_USERNAME, ADMIN_PASSWORD, TELEGRAM_BOT_TOKEN, UPLOAD_DIR, BASE_DIR
 from telegram import Bot
 import uvicorn
@@ -519,14 +519,27 @@ async def toggle_maintenance(enabled: str = Form(...), db: Session = Depends(get
 async def broadcast(
     type: str = Form(...),
     message: str = Form(...),
+    duration: int = Form(60),
     db: Session = Depends(get_db)
 ):
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+    
+    reply_markup = None
     if type == "giveaway":
+        # Create giveaway record
+        new_giveaway = Giveaway(message=message, duration_minutes=duration, status="Active")
+        db.add(new_giveaway)
+        db.commit()
+        
         formatted_message = (
             "🎁✨ *SPECIAL GIVEAWAY ALERT* ✨🎁\n\n"
             f"{message}\n\n"
-            "🚀 *Best of luck trading!*"
+            f"⏱ *Duration:* {duration} minutes\n\n"
+            "🚀 *Best of luck trading! Click the button below to join the giveaway:*"
         )
+        
+        keyboard = [[InlineKeyboardButton("Join Giveaway 🎁 / ចូលរួមចុះឈ្មោះ 🎁", callback_data=f"join_giveaway:{new_giveaway.id}")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
     else:
         formatted_message = (
             "📢 *OFFICIAL BROKER ANNOUNCEMENT* 📢\n\n"
@@ -536,7 +549,12 @@ async def broadcast(
     users = db.query(User).all()
     for u in users:
         try:
-            await bot.send_message(chat_id=u.telegram_id, text=formatted_message, parse_mode="Markdown")
+            await bot.send_message(
+                chat_id=u.telegram_id, 
+                text=formatted_message, 
+                parse_mode="Markdown",
+                reply_markup=reply_markup
+            )
         except Exception as e:
             print(f"Failed to send broadcast to user {u.telegram_id}: {e}")
             

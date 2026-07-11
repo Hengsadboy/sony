@@ -97,6 +97,7 @@
                 <form action="/broadcast" method="POST" style="display: flex; flex-direction: column; gap: 0.5rem;">
                     <input type="hidden" name="type" value="giveaway">
                     <textarea name="message" rows="3" class="form-input" placeholder="🎁 Cool Giveaway Details: ..." required style="font-family: inherit; font-size: 0.85rem;"></textarea>
+                    <input type="number" name="duration" placeholder="Giveaway Duration (Minutes)" class="form-input" required min="1" style="font-family: inherit; font-size: 0.85rem; padding: 0.4rem;" value="60">
                     <button type="submit" class="btn-primary" style="margin: 0; padding: 0.4rem; background: #e040fb; color: white;">Send Giveaway 🚀</button>
                 </form>
             </div>
