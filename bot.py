@@ -699,64 +699,7 @@ async def join_giveaway_callback(update: Update, context: ContextTypes.DEFAULT_T
         db.close()
 
 
-    query = update.callback_query
-    if query:
-        await query.answer()
-        telegram_id = query.from_user.id
-        message_target = query.message
-    else:
-        telegram_id = update.effective_user.id
-        message_target = update.message
-        
-    db = SessionLocal()
-    try:
-        lang = get_user_lang(telegram_id, context)
-        db_user = db.query(User).filter(User.telegram_id == telegram_id).first()
-        if not db_user:
-            await message_target.reply_text(
-                TEXTS["not_registered"][lang],
-                reply_markup=get_persistent_markup(lang),
-                parse_mode="Markdown"
-            )
-            return
-        
-        info_text = TEXTS["already_registered_title"][lang].format(
-            name=db_user.name,
-            email=db_user.email,
-            status=db_user.status
-        )
-        
-        accounts = db.query(TradingAccount).filter(
-            TradingAccount.user_telegram_id == telegram_id,
-            TradingAccount.status != "Deleted"
-        ).all()
-        
-        keyboard = []
-        if not accounts:
-            info_text += TEXTS["no_trading_accounts"][lang]
-        else:
-            for i, acc in enumerate(accounts, 1):
-                acc_num = acc.account_number if acc.account_number else "Pending Admin Assign"
-                login = acc.login if acc.login else "Pending"
-                password = acc.password if acc.password else "Pending"
-                info_text += (
-                    f"*{i}. {acc.account_type} Account*\n"
-                    f"  • ID: {acc.id}\n"
-                    f"  • Account Number: `{acc_num}`\n"
-                    f"  • Login Details: `{login}`\n"
-                    f"  • Password: `{password}`\n"
-                    f"  • Status: {acc.status}\n\n"
-                )
-                # Only allow deleting accounts that are not already deleted
-                display_num = acc.account_number if acc.account_number else f"ID {acc.id}"
-                keyboard.append([InlineKeyboardButton(f"❌ Delete {acc.account_type} ({display_num})", callback_data=f"del_confirm:{acc.id}")])
-                
-        keyboard.append([InlineKeyboardButton("⬅️ Back / ត្រឡប់ក្រោយ", callback_data="btn_back")])
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await message_target.reply_text(info_text, reply_markup=reply_markup, parse_mode="Markdown")
-    finally:
-        db.close()
+
 
 
 def allocate_account_from_stock(db, telegram_id, acc_type):
