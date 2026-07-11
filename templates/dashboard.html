@@ -249,6 +249,7 @@
                 <table>
                     <thead>
                         <tr>
+                            <th>ID</th>
                             <th>User</th>
                             <th>Telegram ID</th>
                             <th>Account ID</th>
@@ -264,6 +265,7 @@
                     <tbody>
                         {% for acc in all_accounts %}
                             <tr id="account-{{ acc.id }}">
+                                <td><code>{{ "%03d"|format(loop.index) }}</code></td>
                                 <td>{{ acc.user.name }}</td>
                                 <td><code>{{ acc.user_telegram_id }}</code></td>
                                 <td><code>{{ acc.account_number }}</code></td>
@@ -288,7 +290,7 @@
                                 </td>
                             </tr>
                             <tr id="history-row-{{ acc.id }}" style="display: none; background: rgba(0, 0, 0, 0.25);">
-                                <td colspan="10" style="padding: 1rem; border-top: none;">
+                                <td colspan="11" style="padding: 1rem; border-top: none;">
                                     <div style="border-radius: 8px; border: 1px solid var(--glass-border); padding: 1rem; background: rgba(20, 20, 35, 0.5);">
                                         <h4 style="margin-top: 0; margin-bottom: 0.5rem; color: var(--accent-color); display: flex; align-items: center; gap: 0.5rem;">
                                             <span>📜 History for Account #{{ acc.account_number }}</span>
