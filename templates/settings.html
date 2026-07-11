@@ -189,7 +189,7 @@
                                     <tbody>
                                         {% for item in cent_accounts %}
                                             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                                                <td style="padding: 0.5rem;"><code>{{ "%03d"|format(loop.index) }}</code></td>
+                                                <td style="padding: 0.5rem;"><code>{{ "%03d"|format(item.serial_id) if item.serial_id else "---" }}</code></td>
                                                 <td style="padding: 0.5rem;"><code>{{ item.account_number }}</code></td>
                                                 <td style="padding: 0.5rem;"><code>{{ item.login }}</code></td>
                                                 <td style="padding: 0.5rem;"><code>{{ item.password }}</code></td>
@@ -233,7 +233,7 @@
                                     <tbody>
                                         {% for item in usd_accounts %}
                                             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                                                <td style="padding: 0.5rem;"><code>{{ "%03d"|format(loop.index) }}</code></td>
+                                                <td style="padding: 0.5rem;"><code>{{ "%03d"|format(item.serial_id) if item.serial_id else "---" }}</code></td>
                                                 <td style="padding: 0.5rem;"><code>{{ item.account_number }}</code></td>
                                                 <td style="padding: 0.5rem;"><code>{{ item.login }}</code></td>
                                                 <td style="padding: 0.5rem;"><code>{{ item.password }}</code></td>

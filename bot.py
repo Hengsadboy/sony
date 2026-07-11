@@ -12,7 +12,7 @@ from telegram.ext import (
     ContextTypes,
     ConversationHandler,
 )
-from database import init_db, SessionLocal, User, TradingAccount, Transaction, PasswordResetRequest, SystemSetting, get_setting, Giveaway, GiveawayParticipant
+from database import init_db, SessionLocal, User, TradingAccount, Transaction, PasswordResetRequest, SystemSetting, get_setting, Giveaway, GiveawayParticipant, get_next_serial_id
 from config import TELEGRAM_BOT_TOKEN, ADMIN_CHAT_ID, UPLOAD_DIR
 
 
@@ -713,7 +713,8 @@ def allocate_account_from_stock(db, telegram_id, acc_type):
             account_number=stock_item.account_number,
             login=stock_item.login,
             password=stock_item.password,
-            status="Approved"
+            status="Approved",
+            serial_id=stock_item.serial_id
         )
         db.add(new_acc)
         # Delete from stock
@@ -870,7 +871,8 @@ async def register_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     new_acc = TradingAccount(
                         user_telegram_id=telegram_id,
                         account_type=acc_type,
-                        status="Pending"
+                        status="Pending",
+                        serial_id=get_next_serial_id(db)
                     )
                     db.add(new_acc)
                     db.commit()
@@ -989,7 +991,8 @@ async def register_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
             new_acc = TradingAccount(
                 user_telegram_id=telegram_id,
                 account_type=acc_type,
-                status="Pending"
+                status="Pending",
+                serial_id=get_next_serial_id(db)
             )
             db.add(new_acc)
             db.commit()

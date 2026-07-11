@@ -35,6 +35,7 @@ class TradingAccount(Base):
     mt5_active = Column(Boolean, default=False)
     mt5_status = Column(String, default="Offline")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    serial_id = Column(Integer, nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="accounts")
@@ -101,6 +102,7 @@ class AccountStock(Base):
     password = Column(String, nullable=False)
     account_type = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    serial_id = Column(Integer, nullable=True)
 
 def init_db():
     Base.metadata.create_all(bind=engine)
@@ -119,6 +121,16 @@ def init_db():
         pass
     try:
         db.execute(text("ALTER TABLE trading_accounts ADD COLUMN mt5_status VARCHAR DEFAULT 'Offline'"))
+        db.commit()
+    except Exception:
+        pass
+    try:
+        db.execute(text("ALTER TABLE trading_accounts ADD COLUMN serial_id INTEGER"))
+        db.commit()
+    except Exception:
+        pass
+    try:
+        db.execute(text("ALTER TABLE account_stock ADD COLUMN serial_id INTEGER"))
         db.commit()
     except Exception:
         pass
@@ -179,3 +191,12 @@ def get_setting(key: str, default: str = "") -> str:
     finally:
         db.close()
     return default
+
+
+def get_next_serial_id(db):
+    max_trading = db.query(TradingAccount.serial_id).order_by(TradingAccount.serial_id.desc()).first()
+    max_stock = db.query(AccountStock.serial_id).order_by(AccountStock.serial_id.desc()).first()
+    
+    val1 = max_trading[0] if max_trading and max_trading[0] else 0
+    val2 = max_stock[0] if max_stock and max_stock[0] else 0
+    return max(val1, val2) + 1

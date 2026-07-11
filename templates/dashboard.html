@@ -32,7 +32,7 @@
                     <tbody>
                         {% for acc in pending_registrations %}
                             <tr>
-                                <td><code>{{ "%03d"|format(all_accounts|length + loop.index) }}</code></td>
+                                <td><code>{{ "%03d"|format(acc.serial_id) if acc.serial_id else "---" }}</code></td>
                                 <td>
                                     <div style="font-weight: 600;">{{ acc.user.name }}</div>
                                     <div style="font-size: 0.85rem; color: var(--text-muted);">{{ acc.user.email }}</div>
@@ -65,6 +65,7 @@
                 <table>
                     <thead>
                         <tr>
+                            <th>ID</th>
                             <th>User</th>
                             <th>Telegram ID</th>
                             <th>Account ID</th>
@@ -76,6 +77,7 @@
                     <tbody>
                         {% for acc in deleted_accounts %}
                             <tr>
+                                <td><code>{{ "%03d"|format(acc.serial_id) if acc.serial_id else "---" }}</code></td>
                                 <td>
                                     <div style="font-weight: 600;">{{ acc.user.name }}</div>
                                     <div style="font-size: 0.85rem; color: var(--text-muted);">{{ acc.user.email }}</div>
@@ -267,7 +269,7 @@
                     <tbody>
                         {% for acc in all_accounts %}
                             <tr id="account-{{ acc.id }}">
-                                <td><code>{{ "%03d"|format(loop.index) }}</code></td>
+                                <td><code>{{ "%03d"|format(acc.serial_id) if acc.serial_id else "---" }}</code></td>
                                 <td>{{ acc.user.name }}</td>
                                 <td><code>{{ acc.user_telegram_id }}</code></td>
                                 <td><code>{{ acc.account_number }}</code></td>

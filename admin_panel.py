@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from database import get_db, init_db, User, TradingAccount, Transaction, PasswordResetRequest, SystemSetting, Giveaway, GiveawayParticipant, AccountStock
+from database import get_db, init_db, User, TradingAccount, Transaction, PasswordResetRequest, SystemSetting, Giveaway, GiveawayParticipant, AccountStock, get_next_serial_id
 from config import ADMIN_USERNAME, ADMIN_PASSWORD, TELEGRAM_BOT_TOKEN, UPLOAD_DIR, BASE_DIR
 from telegram import Bot
 import uvicorn
@@ -169,6 +169,8 @@ async def approve_registration(
     acc.login = login_details
     acc.password = password
     acc.status = "Approved"
+    if not acc.serial_id:
+        acc.serial_id = get_next_serial_id(db)
     
     # Also set user status to Approved if this is their first account
     user = db.query(User).filter(User.telegram_id == acc.user_telegram_id).first()
@@ -622,7 +624,8 @@ async def add_stock(
         account_number=account_number.strip(),
         login=login.strip(),
         password=password.strip(),
-        account_type=account_type.strip()
+        account_type=account_type.strip(),
+        serial_id=get_next_serial_id(db)
     )
     db.add(stock_item)
     db.commit()
@@ -673,7 +676,8 @@ async def recycle_account(
         account_number=acc.account_number,
         login=acc.login,
         password=new_password.strip(),
-        account_type=acc.account_type
+        account_type=acc.account_type,
+        serial_id=acc.serial_id if acc.serial_id else get_next_serial_id(db)
     )
     db.add(stock_item)
     db.delete(acc)
