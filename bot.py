@@ -500,16 +500,23 @@ async def show_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 acc_num = acc.account_number if acc.account_number else "Pending Admin Assign"
                 login = acc.login if acc.login else "Pending"
                 password = acc.password if acc.password else "Pending"
+                status_display = acc.status
+                if acc.status == "Pending Delete":
+                    status_display = "Pending Delete / កំពុងរង់ចាំការលុប"
+                
                 info_text += (
                     f"*{i}. {acc.account_type} Account*\n"
                     f"  • ID: {acc.id}\n"
                     f"  • Account Number: `{acc_num}`\n"
                     f"  • Login Details: `{login}`\n"
                     f"  • Password: `{password}`\n"
-                    f"  • Status: {acc.status}\n\n"
+                    f"  • Status: {status_display}\n\n"
                 )
                 display_num = acc.account_number if acc.account_number else f"ID {acc.id}"
-                keyboard.append([InlineKeyboardButton(f"❌ Delete {acc.account_type} ({display_num})", callback_data=f"del_confirm:{acc.id}")])
+                if acc.status == "Pending Delete":
+                    keyboard.append([InlineKeyboardButton("⏳ Pending Delete Approval", callback_data="none")])
+                else:
+                    keyboard.append([InlineKeyboardButton(f"❌ Delete {acc.account_type} ({display_num})", callback_data=f"del_confirm:{acc.id}")])
                 
         keyboard.append([InlineKeyboardButton("⬅️ Back / ត្រឡប់ក្រោយ", callback_data="btn_back")])
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -582,18 +589,18 @@ async def delete_execute_callback(update: Update, context: ContextTypes.DEFAULT_
         display_num = acc.account_number if acc.account_number else f"ID {acc.id}"
         acc_type = acc.account_type
         
-        # Mark as Deleted
-        acc.status = "Deleted"
+        # Mark as Pending Delete
+        acc.status = "Pending Delete"
         db.commit()
         
         # Notify Admin
         alert = (
-            f"⚠️ *TRADING ACCOUNT DELETED BY USER* ⚠️\n\n"
+            f"⚠️ *TRADING ACCOUNT DELETION REQUEST* ⚠️\n\n"
             f"👤 User: {name}\n"
             f"💳 Telegram ID: `{telegram_id}`\n"
             f"💰 Account Type: *{acc_type}*\n"
             f"🔢 Account ID: `{display_num}`\n"
-            f"Status marked as Deleted. Pending recycle back to stock."
+            f"Status marked as Pending Delete. Please approve and recycle this account in the Admin Panel."
         )
         await send_admin_notification(context.application, alert)
         
@@ -608,11 +615,11 @@ async def delete_execute_callback(update: Update, context: ContextTypes.DEFAULT_
             logger.error(f"Error sending delete notification: {e}")
             
         success_msg = (
-            f"✅ Your {acc_type} trading account ({display_num}) has been successfully deleted/deactivated!\n"
-            "You are now allowed to create a new account of this type."
+            f"⏳ Your deletion request for {acc_type} trading account ({display_num}) has been submitted!\n"
+            "Please wait for the admin team to approve it. The account remains active until approved."
             if lang == "en" else
-            f"✅ គណនីជួញដូរប្រភេទ {acc_type} ({display_num}) របស់អ្នកត្រូវបានលុប/បិទដោយជោគជ័យហើយ!\n"
-            "ឥឡូវនេះអ្នកអាចបង្កើតគណនីថ្មីសម្រាប់ប្រភេទនេះបានហើយ Bound"
+            f"⏳ សំណើសុំលុបគណនីប្រភេទ {acc_type} ({display_num}) របស់អ្នកត្រូវបានបញ្ជូនហើយ!\n"
+            "សូមរង់ចាំក្រុមការងារ Admin ពិនិត្យនិងអនុម័ត។ គណនីនេះនឹងនៅតែបង្ហាញរហូតដល់ត្រូវបានអនុម័ត។"
         )
         await query.message.reply_text(success_msg, reply_markup=get_persistent_markup(lang), parse_mode="Markdown")
         

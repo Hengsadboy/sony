@@ -108,7 +108,7 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     pending_resets = db.query(PasswordResetRequest).filter(PasswordResetRequest.status == "Pending").all()
     
     # Fetch deleted accounts pending recycle
-    deleted_accounts = db.query(TradingAccount).filter(TradingAccount.status == "Deleted").all()
+    deleted_accounts = db.query(TradingAccount).filter(TradingAccount.status == "Pending Delete").all()
     
     # Fetch historical processed transactions (Approved or Rejected)
     history_txs = db.query(Transaction).filter(
@@ -659,7 +659,7 @@ async def recycle_account(
     except HTTPException:
         return RedirectResponse(url="/login", status_code=303)
         
-    acc = db.query(TradingAccount).filter(TradingAccount.id == acc_id, TradingAccount.status == "Deleted").first()
+    acc = db.query(TradingAccount).filter(TradingAccount.id == acc_id, TradingAccount.status == "Pending Delete").first()
     if not acc:
         raise HTTPException(status_code=404, detail="Deleted account not found")
         
