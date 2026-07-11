@@ -107,6 +107,9 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     # Fetch pending password reset requests
     pending_resets = db.query(PasswordResetRequest).filter(PasswordResetRequest.status == "Pending").all()
     
+    # Fetch deleted accounts pending recycle
+    deleted_accounts = db.query(TradingAccount).filter(TradingAccount.status == "Deleted").all()
+    
     # Fetch historical processed transactions (Approved or Rejected)
     history_txs = db.query(Transaction).filter(
         Transaction.status.in_(["Approved", "Rejected"])
@@ -138,6 +141,7 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
             "pending_withdrawals": pending_withdrawals,
             "all_accounts": all_accounts,
             "pending_resets": pending_resets,
+            "deleted_accounts": deleted_accounts,
             "history_deposits": history_deposits,
             "history_withdrawals": history_withdrawals,
             "maintenance_enabled": maintenance_enabled,
@@ -641,6 +645,41 @@ async def delete_stock(
         db.delete(stock_item)
         db.commit()
     return RedirectResponse(url="/settings", status_code=303)
+
+
+@app.post("/recycle-account/{acc_id}")
+async def recycle_account(
+    request: Request,
+    acc_id: int,
+    new_password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    try:
+        get_current_admin(request)
+    except HTTPException:
+        return RedirectResponse(url="/login", status_code=303)
+        
+    acc = db.query(TradingAccount).filter(TradingAccount.id == acc_id, TradingAccount.status == "Deleted").first()
+    if not acc:
+        raise HTTPException(status_code=404, detail="Deleted account not found")
+        
+    exists = db.query(AccountStock).filter(AccountStock.account_number == acc.account_number).first()
+    if exists:
+        db.delete(acc)
+        db.commit()
+        return RedirectResponse(url="/", status_code=303)
+        
+    stock_item = AccountStock(
+        account_number=acc.account_number,
+        login=acc.login,
+        password=new_password.strip(),
+        account_type=acc.account_type
+    )
+    db.add(stock_item)
+    db.delete(acc)
+    db.commit()
+    
+    return RedirectResponse(url="/", status_code=303)
 
 
 if __name__ == "__main__":

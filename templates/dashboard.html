@@ -53,6 +53,49 @@
         </div>
     </div>
 
+    <!-- DELETED ACCOUNTS (PENDING RECYCLE) -->
+    <div class="glass-panel card" style="margin-top: 2rem;">
+        <h2 class="section-title">♻️ Deleted Accounts (Pending Recycle)</h2>
+        <div class="table-container">
+            {% if not deleted_accounts %}
+                <p style="color: var(--text-muted); font-style: italic; padding: 1rem 0;">No deleted accounts waiting to be recycled.</p>
+            {% else %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Telegram ID</th>
+                            <th>Account ID</th>
+                            <th>Server</th>
+                            <th>Type</th>
+                            <th>Recycle to Stock (Enter New Password)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for acc in deleted_accounts %}
+                            <tr>
+                                <td>
+                                    <div style="font-weight: 600;">{{ acc.user.name }}</div>
+                                    <div style="font-size: 0.85rem; color: var(--text-muted);">{{ acc.user.email }}</div>
+                                </td>
+                                <td><code>{{ acc.user_telegram_id }}</code></td>
+                                <td><code>{{ acc.account_number }}</code></td>
+                                <td><code>{{ acc.login }}</code></td>
+                                <td><span class="pill pill-approved">{{ acc.account_type }}</span></td>
+                                <td>
+                                    <form action="/recycle-account/{{ acc.id }}" method="POST" style="display: flex; gap: 0.5rem; align-items: center;">
+                                        <input type="text" name="new_password" placeholder="New Password" class="form-input" required style="margin-bottom: 0; flex: 1; padding: 0.4rem;">
+                                        <button type="submit" class="btn-success" style="padding: 0.4rem 0.8rem; font-weight: bold; margin: 0;">Recycle ♻️</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+    </div>
+
     <div class="grid-cols-2">
         <!-- PENDING DEPOSITS -->
         <div class="glass-panel card">

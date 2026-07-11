@@ -446,6 +446,109 @@ async def show_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.callback_query.answer()
         return
 
+async def delete_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    acc_id = int(query.data.split(":")[1])
+    telegram_id = query.from_user.id
+    lang = get_user_lang(telegram_id, context)
+    
+    db = SessionLocal()
+    try:
+        acc = db.query(TradingAccount).filter(TradingAccount.id == acc_id, TradingAccount.user_telegram_id == telegram_id).first()
+        if not acc:
+            await query.message.reply_text("❌ Account not found / រកមិនឃើញគណនី")
+            return
+            
+        display_num = acc.account_number if acc.account_number else f"ID {acc.id}"
+        
+        if lang == "km":
+            text = (
+                f"⚠️ *តើអ្នកពិតជាចង់លុបគណនីជួញដូរប្រភេទ {acc.account_type} ({display_num}) មែនទេ?*\n\n"
+                "សកម្មភាពនេះមិនអាចត្រឡប់ក្រោយបានទេ! ប្រវត្តិប្រតិបត្តិការទាំងអស់នឹងត្រូវបានរក្សាទុក ប៉ុន្តែគណនីនេះនឹងលែងសកម្មទៀតហើយ។"
+            )
+            btn_yes = "✅ យល់ព្រម លុបគណនី"
+            btn_no = "❌ បោះបង់"
+        else:
+            text = (
+                f"⚠️ *Are you sure you want to delete your {acc.account_type} account ({display_num})?*\n\n"
+                "This action cannot be undone! Your transaction history will be preserved, but the account will no longer be active."
+            )
+            btn_yes = "✅ Yes, Delete Account"
+            btn_no = "❌ Cancel"
+            
+        keyboard = [
+            [
+                InlineKeyboardButton(btn_yes, callback_data=f"del_execute:{acc_id}"),
+                InlineKeyboardButton(btn_no, callback_data="btn_info")
+            ]
+        ]
+        await query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    finally:
+        db.close()
+
+
+async def delete_execute_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    acc_id = int(query.data.split(":")[1])
+    telegram_id = query.from_user.id
+    lang = get_user_lang(telegram_id, context)
+    
+    db = SessionLocal()
+    try:
+        acc = db.query(TradingAccount).filter(TradingAccount.id == acc_id, TradingAccount.user_telegram_id == telegram_id).first()
+        if not acc:
+            await query.message.reply_text("❌ Account not found / រកមិនឃើញគណនី")
+            return
+            
+        db_user = db.query(User).filter(User.telegram_id == telegram_id).first()
+        name = db_user.name if db_user else "User"
+        display_num = acc.account_number if acc.account_number else f"ID {acc.id}"
+        acc_type = acc.account_type
+        
+        # Mark as Deleted
+        acc.status = "Deleted"
+        db.commit()
+        
+        # Notify Admin
+        alert = (
+            f"⚠️ *TRADING ACCOUNT DELETED BY USER* ⚠️\n\n"
+            f"👤 User: {name}\n"
+            f"💳 Telegram ID: `{telegram_id}`\n"
+            f"💰 Account Type: *{acc_type}*\n"
+            f"🔢 Account ID: `{display_num}`\n"
+            f"Status marked as Deleted. Pending recycle back to stock."
+        )
+        await send_admin_notification(context.application, alert)
+        
+        try:
+            group_id = get_setting("telegram_group_id", "-5536620816")
+            await context.application.bot.send_message(
+                chat_id=group_id,
+                text=alert,
+                parse_mode="Markdown"
+            )
+        except Exception as e:
+            logger.error(f"Error sending delete notification: {e}")
+            
+        success_msg = (
+            f"✅ Your {acc_type} trading account ({display_num}) has been successfully deleted/deactivated!\n"
+            "You are now allowed to create a new account of this type."
+            if lang == "en" else
+            f"✅ គណនីជួញដូរប្រភេទ {acc_type} ({display_num}) របស់អ្នកត្រូវបានលុប/បិទដោយជោគជ័យហើយ!\n"
+            "ឥឡូវនេះអ្នកអាចបង្កើតគណនីថ្មីសម្រាប់ប្រភេទនេះបានហើយ Bound"
+        )
+        await query.message.reply_text(success_msg, reply_markup=get_persistent_markup(lang), parse_mode="Markdown")
+        
+        # Re-trigger show_info to display updated list
+        await show_info(update, context)
+    finally:
+        db.close()
+
+
 async def join_giveaway_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -527,7 +630,12 @@ async def join_giveaway_callback(update: Update, context: ContextTypes.DEFAULT_T
             status=db_user.status
         )
         
-        accounts = db.query(TradingAccount).filter(TradingAccount.user_telegram_id == telegram_id).all()
+        accounts = db.query(TradingAccount).filter(
+            TradingAccount.user_telegram_id == telegram_id,
+            TradingAccount.status != "Deleted"
+        ).all()
+        
+        keyboard = []
         if not accounts:
             info_text += TEXTS["no_trading_accounts"][lang]
         else:
@@ -543,8 +651,14 @@ async def join_giveaway_callback(update: Update, context: ContextTypes.DEFAULT_T
                     f"  • Password: `{password}`\n"
                     f"  • Status: {acc.status}\n\n"
                 )
+                # Only allow deleting accounts that are not already deleted
+                display_num = acc.account_number if acc.account_number else f"ID {acc.id}"
+                keyboard.append([InlineKeyboardButton(f"❌ Delete {acc.account_type} ({display_num})", callback_data=f"del_confirm:{acc.id}")])
+                
+        keyboard.append([InlineKeyboardButton("⬅️ Back / ត្រឡប់ក្រោយ", callback_data="btn_back")])
+        reply_markup = InlineKeyboardMarkup(keyboard)
         
-        await message_target.reply_text(info_text, reply_markup=get_persistent_markup(lang), parse_mode="Markdown")
+        await message_target.reply_text(info_text, reply_markup=reply_markup, parse_mode="Markdown")
     finally:
         db.close()
 
@@ -600,11 +714,13 @@ async def register_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Enforce 1 account of EACH type limit (Max 1 Cent, Max 1 USD)
         cent_acc = db.query(TradingAccount).filter(
             TradingAccount.user_telegram_id == telegram_id,
-            TradingAccount.account_type == "Cent"
+            TradingAccount.account_type == "Cent",
+            TradingAccount.status != "Deleted"
         ).first()
         usd_acc = db.query(TradingAccount).filter(
             TradingAccount.user_telegram_id == telegram_id,
-            TradingAccount.account_type == "USD"
+            TradingAccount.account_type == "USD",
+            TradingAccount.status != "Deleted"
         ).first()
         
         if cent_acc and usd_acc:
@@ -653,7 +769,8 @@ async def register_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         existing = db.query(TradingAccount).filter(
             TradingAccount.user_telegram_id == telegram_id,
-            TradingAccount.account_type == acc_type
+            TradingAccount.account_type == acc_type,
+            TradingAccount.status != "Deleted"
         ).first()
         if existing:
             msg = (
@@ -1591,6 +1708,8 @@ def run_bot():
     application.add_handler(CallbackQueryHandler(start, pattern="^btn_back$"))
     application.add_handler(CallbackQueryHandler(show_info, pattern="^btn_info$"))
     application.add_handler(CallbackQueryHandler(join_giveaway_callback, pattern="^join_giveaway:"))
+    application.add_handler(CallbackQueryHandler(delete_confirm_callback, pattern="^del_confirm:"))
+    application.add_handler(CallbackQueryHandler(delete_execute_callback, pattern="^del_execute:"))
     application.add_handler(MessageHandler(filters.Regex("^(ℹ️ My Account Info|ℹ️ ព័ត៌មានគណនី)$"), show_info))
     
     # Add Conversations
