@@ -12,7 +12,7 @@ from telegram.ext import (
     ContextTypes,
     ConversationHandler,
 )
-from database import init_db, SessionLocal, User, TradingAccount, Transaction, PasswordResetRequest, SystemSetting, get_setting, Giveaway, GiveawayParticipant, get_next_serial_id
+from database import init_db, SessionLocal, User, TradingAccount, Transaction, PasswordResetRequest, SystemSetting, get_setting, Giveaway, GiveawayParticipant, AccountStock, get_next_serial_id
 from config import TELEGRAM_BOT_TOKEN, ADMIN_CHAT_ID, UPLOAD_DIR
 
 
