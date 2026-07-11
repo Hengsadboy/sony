@@ -497,6 +497,11 @@ async def settings_page(request: Request, db: Session = Depends(get_db)):
     welcome_msg_km = welcome_msg_km_setting.value if welcome_msg_km_setting else "👋 សូមស្វាគមន៍ *{name}* មកកាន់ *Manual Forex Broker* របស់យើង!"
     
     stock_accounts = db.query(AccountStock).order_by(AccountStock.created_at.desc()).all()
+    giveaways = db.query(Giveaway).order_by(Giveaway.id.desc()).limit(5).all()
+    for g in giveaways:
+        g.participants_list = db.query(GiveawayParticipant).filter(GiveawayParticipant.giveaway_id == g.id).all()
+        for p in g.participants_list:
+            p.invite_count = db.query(User).filter(User.referred_by == p.user_telegram_id).count()
     
     return templates.TemplateResponse(
         request=request,
@@ -508,7 +513,8 @@ async def settings_page(request: Request, db: Session = Depends(get_db)):
             "telegram_bot_token": telegram_bot_token,
             "welcome_msg_en": welcome_msg_en,
             "welcome_msg_km": welcome_msg_km,
-            "stock_accounts": stock_accounts
+            "stock_accounts": stock_accounts,
+            "giveaways": giveaways
         }
     )
 
@@ -529,6 +535,7 @@ async def broadcast(
     type: str = Form(...),
     message: str = Form(...),
     duration: int = Form(60),
+    required_invites: int = Form(3),
     db: Session = Depends(get_db)
 ):
     from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -536,14 +543,20 @@ async def broadcast(
     reply_markup = None
     if type == "giveaway":
         # Create giveaway record
-        new_giveaway = Giveaway(message=message, duration_minutes=duration, status="Active")
+        new_giveaway = Giveaway(
+            message=message,
+            duration_minutes=duration,
+            status="Active",
+            required_invites=required_invites
+        )
         db.add(new_giveaway)
         db.commit()
         
         formatted_message = (
             "🎁✨ *SPECIAL GIVEAWAY ALERT* ✨🎁\n\n"
             f"{message}\n\n"
-            f"⏱ *Duration:* {duration} minutes\n\n"
+            f"⏱ *Duration:* {duration} minutes\n"
+            f"👥 *Required Invites to Win:* {required_invites} friends\n\n"
             "🚀 *Best of luck trading! Click the button below to join the giveaway:*"
         )
         

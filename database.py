@@ -15,6 +15,7 @@ class User(Base):
     email = Column(String, unique=True, nullable=False)
     status = Column(String, default="Pending")  # Pending, Approved
     language = Column(String, default="en")     # en, km
+    referred_by = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     # Relationships
@@ -84,6 +85,7 @@ class Giveaway(Base):
     status = Column(String, default="Active")  # Active, Ended
     winner_telegram_id = Column(Integer, nullable=True)
     winner_name = Column(String, nullable=True)
+    required_invites = Column(Integer, default=3)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     
 class GiveawayParticipant(Base):
@@ -131,6 +133,16 @@ def init_db():
         pass
     try:
         db.execute(text("ALTER TABLE account_stock ADD COLUMN serial_id INTEGER"))
+        db.commit()
+    except Exception:
+        pass
+    try:
+        db.execute(text("ALTER TABLE users ADD COLUMN referred_by INTEGER"))
+        db.commit()
+    except Exception:
+        pass
+    try:
+        db.execute(text("ALTER TABLE giveaways ADD COLUMN required_invites INTEGER DEFAULT 3"))
         db.commit()
     except Exception:
         pass

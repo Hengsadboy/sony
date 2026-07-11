@@ -368,13 +368,13 @@ def get_persistent_markup(lang):
         reply_keyboard = [
             ["📝 ចុះឈ្មោះគណនី", "ℹ️ ព័ត៌មានគណនី"],
             ["💰 ដាក់ប្រាក់", "💸 ដកប្រាក់"],
-            ["🔑 ភ្លេចលេខសម្ងាត់"]
+            ["🔑 ភ្លេចលេខសម្ងាត់", "👥 ណែនាំមិត្តភក្តិ"]
         ]
     else:
         reply_keyboard = [
             ["📝 Register Account", "ℹ️ My Account Info"],
             ["💰 Deposit", "💸 Withdraw"],
-            ["🔑 Forgot Password"]
+            ["🔑 Forgot Password", "👥 Invite Friends"]
         ]
     return ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True)
 
@@ -393,6 +393,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if update.callback_query:
             await update.callback_query.answer()
         return
+
+    if context.args and len(context.args) > 0:
+        param = context.args[0]
+        if param.startswith("ref_"):
+            try:
+                referrer_id = int(param.split("_")[1])
+                context.user_data["referred_by"] = referrer_id
+            except Exception:
+                pass
 
     message_target = update.message if update.message else update.callback_query.message
     
@@ -538,6 +547,75 @@ async def show_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = InlineKeyboardMarkup(keyboard)
         
         await message_target.reply_text(info_text, reply_markup=reply_markup, parse_mode="Markdown")
+    finally:
+        db.close()
+
+
+async def invite_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if is_bot_under_maintenance():
+        message_target = update.message if update.message else update.callback_query.message
+        await message_target.reply_text(
+            "⚠️ *System Maintenance in Progress*\n\n"
+            "Our Telegram bot is currently undergoing maintenance/updates to improve our services.\n"
+            "All trading systems, deposits, and withdrawals remain safe. "
+            "Please try again in a little while! Thank you for your patience.",
+            parse_mode="Markdown"
+        )
+        if update.callback_query:
+            await update.callback_query.answer()
+        return
+
+    query = update.callback_query
+    if query:
+        await query.answer()
+        telegram_id = query.from_user.id
+        message_target = query.message
+    else:
+        telegram_id = update.effective_user.id
+        message_target = update.message
+
+    lang = get_user_lang(telegram_id, context)
+    
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.telegram_id == telegram_id).first()
+        if not user:
+            msg = (
+                "❌ You are not registered yet. Please register an account first to get your invite link!"
+                if lang == "en" else
+                "❌ អ្នកមិនទាន់បានចុះឈ្មោះនៅឡើយទេ។ សូមចុះឈ្មោះគណនីជាមុនសិន ដើម្បីទទួលបានតំណភ្ជាប់ណែនាំរបស់អ្នក!"
+            )
+            await message_target.reply_text(msg, reply_markup=get_persistent_markup(lang), parse_mode="Markdown")
+            return
+
+        bot_info = await context.application.bot.get_me()
+        bot_username = bot_info.username
+        ref_link = f"https://t.me/{bot_username}?start=ref_{telegram_id}"
+        
+        invite_count = db.query(User).filter(User.referred_by == telegram_id).count()
+        
+        if lang == "km":
+            msg = (
+                f"👥 *ប្រព័ន្ធណែនាំមិត្តភក្តិ (Referral System)*\n\n"
+                f"ណែនាំមិត្តភក្តិរបស់អ្នកអោយមកប្រើប្រាស់ Bot របស់យើង ដើម្បីមានឱកាសឈ្នះរង្វាន់ធំពីការចាប់រង្វាន់ (Giveaways)!\n\n"
+                f"🔗 *តំណភ្ជាប់ណែនាំរបស់អ្នក:*\n`{ref_link}`\n\n"
+                f"📊 ចំនួនមិត្តភក្តិបានណែនាំដោយជោគជ័យ: *{invite_count}* នាក់\n\n"
+                f"ℹ️ _ចំណាំ: មិត្តភក្តិត្រូវតែចុះឈ្មោះប្រវត្តិរូបពេញលេញ (ឈ្មោះ និង Email) នៅក្នុង Bot ទើបទទួលបានការរាប់។_"
+            )
+        else:
+            msg = (
+                f"👥 *Referral / Invite System*\n\n"
+                f"Invite your friends to use our bot and get a chance to win amazing prizes in our giveaways!\n\n"
+                f"🔗 *Your Referral Link:*\n`{ref_link}`\n\n"
+                f"📊 Your successful invites: *{invite_count}*\n\n"
+                f"ℹ️ _Note: Your friends must complete their profile registration (Name & Email) in the bot for it to count as a successful invite._"
+            )
+            
+        await message_target.reply_text(
+            msg,
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back / ត្រឡប់ក្រោយ", callback_data="btn_back")]]),
+            parse_mode="Markdown"
+        )
     finally:
         db.close()
 
@@ -695,6 +773,32 @@ async def join_giveaway_callback(update: Update, context: ContextTypes.DEFAULT_T
                 "✅ អ្នកបានចូលរួមការចាប់រង្វាន់ដោយជោគជ័យ! សូមជូនពរអោយសំណាងល្អ! 🎁"
             )
             await query.message.reply_text(msg)
+            
+            try:
+                bot_info = await context.application.bot.get_me()
+                bot_username = bot_info.username
+                ref_link = f"https://t.me/{bot_username}?start=ref_{telegram_id}"
+                
+                # Count current completed invites
+                invite_count = db.query(User).filter(User.referred_by == telegram_id).count()
+                
+                if lang == "km":
+                    invite_msg = (
+                        f"🔗 *នេះជាតំណភ្ជាប់ណែនាំ (Invite Link) របស់អ្នក:*\n`{ref_link}`\n\n"
+                        f"ចែករំលែកតំណភ្ជាប់នេះទៅកាន់មិត្តភក្តិរបស់អ្នក! មិត្តភក្តិត្រូវតែចូលទៅកាន់ Bot និងចុះឈ្មោះប្រវត្តិរូបពេញលេញទើបទទួលបានការរាប់។\n"
+                        f"📊 ចំនួនមិត្តភក្តិបានណែនាំបច្ចុប្បន្ន: *{invite_count}* នាក់\n"
+                        f"⚠️ *លក្ខខណ្ឌឈ្នះ:* អ្នកត្រូវណែនាំមិត្តភក្តិយ៉ាងតិច *{giveaway.required_invites}* នាក់ ទើបមានសិទ្ធិឈ្នះការចាប់រង្វាន់នេះ។ ប្រសិនបើអ្នកឈ្នះតែមិនទាន់គ្រប់ចំនួន នឹងត្រូវបាត់បង់រង្វាន់ដោយស្វ័យប្រវត្តិ។"
+                    )
+                else:
+                    invite_msg = (
+                        f"🔗 *Here is your referral/invite link:*\n`{ref_link}`\n\n"
+                        f"Share this link with your friends! They must start the bot and complete their profile registration for it to count.\n"
+                        f"📊 Your current successful invites: *{invite_count}*\n"
+                        f"⚠️ *Win Requirement:* You must have invited at least *{giveaway.required_invites}* friends to be eligible to win this giveaway. If you are drawn as the winner but haven't completed the invites, you will automatically lose the prize!"
+                    )
+                await query.message.reply_text(invite_msg, parse_mode="Markdown")
+            except Exception as e:
+                logger.error(f"Error sending invite link to user: {e}")
     finally:
         db.close()
 
@@ -946,13 +1050,16 @@ async def register_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(TEXTS["reg_email_exists"][lang])
             return REG_GET_EMAIL
         
+        referred_by = context.user_data.get("referred_by")
+        
         # Save User (store language preference)
         new_user = User(
             telegram_id=telegram_id,
             name=name,
             email=email,
             language=lang,
-            status="Pending"
+            status="Pending",
+            referred_by=referred_by
         )
         db.add(new_user)
         
@@ -1616,30 +1723,73 @@ async def giveaway_checker_loop():
                         temp_bot = Bot(token=token)
                         
                         if participants:
-                            winner = random.choice(participants)
-                            g.winner_telegram_id = winner.user_telegram_id
-                            g.winner_name = winner.user_name
+                            eligible_winner = None
+                            disqualified_announcements = []
+                            final_invites = 0
+                            req = g.required_invites if g.required_invites is not None else 3
                             
-                            announcement_en = (
-                                "🎉 *GIVEAWAY WINNER ANNOUNCEMENT* 🎉\n\n"
-                                f"The giveaway has ended!\n"
-                                f"Congratulations to our winner: *{winner.user_name}* (Telegram ID: `{winner.user_telegram_id}`)\n\n"
-                                "🎁 *Wait for admin to credit the prize money to your trading account!*"
-                            )
-                            announcement_km = (
-                                "🎉 *ដំណឹងប្រកាសអ្នកឈ្នះរង្វាន់* 🎉\n\n"
-                                "ការចាប់រង្វាន់ត្រូវបានបញ្ចប់!\n"
-                                f"សូមអបអរសាទរដល់អ្នកឈ្នះរបស់យើង៖ *{winner.user_name}* (Telegram ID: `{winner.user_telegram_id}`)\n\n"
-                                "🎁 *សូមរង់ចាំ Admin បញ្ចូលប្រាក់រង្វាន់ទៅក្នុងគណនីជួញដូររបស់អ្នក!*"
-                            )
-                            
-                            admin_group_id = get_setting("telegram_group_id", "-5536620816")
-                            admin_alert = (
-                                f"🔔 *Giveaway #{g.id} Ended!*\n\n"
-                                f"Winner: *{winner.user_name}*\n"
-                                f"Telegram ID: `{winner.user_telegram_id}`\n\n"
-                                "Please credit the prize money to their account."
-                            )
+                            while participants:
+                                candidate = random.choice(participants)
+                                participants.remove(candidate)
+                                
+                                invites = db.query(User).filter(User.referred_by == candidate.user_telegram_id).count()
+                                
+                                if invites >= req:
+                                    eligible_winner = candidate
+                                    final_invites = invites
+                                    break
+                                else:
+                                    disqualified_announcements.append(
+                                        f"❌ *{candidate.user_name}* (Telegram ID: `{candidate.user_telegram_id}`) was drawn but was disqualified because they only completed *{invites}/{req}* invites."
+                                    )
+                                    
+                            if eligible_winner:
+                                winner = eligible_winner
+                                g.winner_telegram_id = winner.user_telegram_id
+                                g.winner_name = winner.user_name
+                                
+                                dis_prefix = "\n".join(disqualified_announcements) + "\n\n" if disqualified_announcements else ""
+                                
+                                announcement_en = (
+                                    "🎉 *GIVEAWAY WINNER ANNOUNCEMENT* 🎉\n\n"
+                                    f"{dis_prefix}"
+                                    f"The giveaway has ended!\n"
+                                    f"Congratulations to our winner: *{winner.user_name}* (Telegram ID: `{winner.user_telegram_id}`)\n"
+                                    f"📊 Completed Invites: *{final_invites}* (Required: {req})\n\n"
+                                    "🎁 *Wait for admin to credit the prize money to your trading account!*"
+                                )
+                                announcement_km = (
+                                    "🎉 *ដំណឹងប្រកាសអ្នកឈ្នះរង្វាន់* 🎉\n\n"
+                                    f"{dis_prefix}"
+                                    "ការចាប់រង្វាន់ត្រូវបានបញ្ចប់!\n"
+                                    f"សូមអបអរសាទរដល់អ្នកឈ្នះរបស់យើង៖ *{winner.user_name}* (Telegram ID: `{winner.user_telegram_id}`)\n"
+                                    f"📊 ចំនួនណែនាំមិត្តភក្តិ៖ *{final_invites}* (តម្រូវការ៖ {req})\n\n"
+                                    "🎁 *សូមរង់ចាំ Admin បញ្ចូលប្រាក់រង្វាន់ទៅក្នុងគណនីជួញដូររបស់អ្នក!*"
+                                )
+                                
+                                admin_group_id = get_setting("telegram_group_id", "-5536620816")
+                                admin_alert = (
+                                    f"🔔 *Giveaway #{g.id} Ended!*\n\n"
+                                    f"Winner: *{winner.user_name}*\n"
+                                    f"Telegram ID: `{winner.user_telegram_id}`\n"
+                                    f"Completed Invites: `{final_invites}/{req}`\n\n"
+                                    "Please credit the prize money to their account."
+                                )
+                            else:
+                                dis_prefix = "\n".join(disqualified_announcements) + "\n\n" if disqualified_announcements else ""
+                                announcement_en = (
+                                    "🎉 *GIVEAWAY ENDED* 🎉\n\n"
+                                    f"{dis_prefix}"
+                                    "The giveaway has ended, but unfortunately no participants completed the required invite tasks to claim the prize."
+                                )
+                                announcement_km = (
+                                    "🎉 *ការចាប់រង្វាន់បានបញ្ចប់* 🎉\n\n"
+                                    f"{dis_prefix}"
+                                    "ការចាប់រង្វាន់បានបញ្ចប់ហើយ ប៉ុន្តែជាការគួរឱ្យស្តាយ គ្មានអ្នកចូលរួមណាម្នាក់បានបំពេញលក្ខខណ្ឌណែនាំមិត្តភក្តិគ្រប់ចំនួនដើម្បីទទួលបានរង្វាន់នោះទេ។"
+                                )
+                                
+                                admin_group_id = get_setting("telegram_group_id", "-5536620816")
+                                admin_alert = f"🔔 *Giveaway #{g.id} Ended!* No participants completed the required invite tasks."
                         else:
                             announcement_en = (
                                 "🎉 *GIVEAWAY ENDED* 🎉\n\n"
@@ -1748,6 +1898,7 @@ def run_bot():
     
     # Basic Handlers
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("check_invite", invite_menu_handler))
     application.add_handler(CallbackQueryHandler(set_language, pattern="^lang_"))
     application.add_handler(CallbackQueryHandler(start, pattern="^btn_back$"))
     application.add_handler(CallbackQueryHandler(show_info, pattern="^btn_info$"))
@@ -1755,6 +1906,7 @@ def run_bot():
     application.add_handler(CallbackQueryHandler(delete_confirm_callback, pattern="^del_confirm:"))
     application.add_handler(CallbackQueryHandler(delete_execute_callback, pattern="^del_execute:"))
     application.add_handler(MessageHandler(filters.Regex("^(ℹ️ My Account Info|ℹ️ ព័ត៌មានគណនី)$"), show_info))
+    application.add_handler(MessageHandler(filters.Regex("^(👥 Invite Friends|👥 ណែនាំមិត្តភក្តិ)$"), invite_menu_handler))
     
     # Add Conversations
     application.add_handler(reg_handler)

@@ -98,6 +98,7 @@
                     <input type="hidden" name="type" value="giveaway">
                     <textarea name="message" rows="3" class="form-input" placeholder="🎁 Cool Giveaway Details: ..." required style="font-family: inherit; font-size: 0.85rem;"></textarea>
                     <input type="number" name="duration" placeholder="Giveaway Duration (Minutes)" class="form-input" required min="1" style="font-family: inherit; font-size: 0.85rem; padding: 0.4rem;" value="60">
+                    <input type="number" name="required_invites" placeholder="Required Invites to Win (Default: 3)" class="form-input" required min="0" style="font-family: inherit; font-size: 0.85rem; padding: 0.4rem;" value="3">
                     <button type="submit" class="btn-primary" style="margin: 0; padding: 0.4rem; background: #e040fb; color: white;">Send Giveaway 🚀</button>
                 </form>
             </div>
@@ -272,6 +273,57 @@
                 }
                 </script>
             </div>
+        </div>
+
+        <!-- Giveaways & Participants Section -->
+        <div style="margin-top: 2rem; background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 2rem;">
+            <h2 class="section-title">🎁 Active & Recent Giveaways</h2>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.5rem;">
+                View the last 5 giveaways, their configurations, and the participants who joined along with their invite statistics.
+            </p>
+
+            {% if not giveaways %}
+                <p style="color: var(--text-muted); font-style: italic;">No giveaways launched yet.</p>
+            {% else %}
+                <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
+                    {% for g in giveaways %}
+                        <div style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--glass-border);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.8rem; margin-bottom: 1rem;">
+                                <h3 style="margin: 0; color: #e040fb;">Giveaway #{{ g.id }}</h3>
+                                <div>
+                                    {% if g.status == 'Active' %}
+                                        <span class="pill" style="background: #e040fb; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">Active ⚡</span>
+                                    {% else %}
+                                        <span class="pill" style="background: rgba(255,255,255,0.1); color: var(--text-muted); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">Ended ⏹</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <p style="margin: 0 0 1rem 0; font-size: 0.95rem; white-space: pre-line;"><strong>Details:</strong> {{ g.message }}</p>
+                            
+                            <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; font-size: 0.85rem; margin-bottom: 1rem; color: var(--text-muted);">
+                                <div>⏱ <strong>Duration:</strong> {{ g.duration_minutes }} minutes</div>
+                                <div>👥 <strong>Required Invites:</strong> {{ g.required_invites }} friends</div>
+                                {% if g.status == 'Ended' %}
+                                    <div>🏆 <strong>Winner:</strong> {% if g.winner_name %} <span style="color: var(--accent-color); font-weight: bold;">{{ g.winner_name }}</span> (ID: {{ g.winner_telegram_id }}) {% else %} <span style="font-style: italic;">No eligible winner</span> {% endif %}</div>
+                                {% endif %}
+                            </div>
+
+                            <h4 style="margin: 1rem 0 0.5rem 0; font-size: 0.9rem; color: white;">Joined Participants ({{ g.participants_list|length }})</h4>
+                            {% if not g.participants_list %}
+                                <p style="font-size: 0.85rem; color: var(--text-muted); font-style: italic; margin: 0;">No users joined this giveaway yet.</p>
+                            {% else %}
+                                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                    {% for p in g.participants_list %}
+                                        <span class="pill" style="background: rgba(255,255,255,0.05); color: white; border: 1px solid var(--glass-border); padding: 0.3rem 0.6rem; font-size: 0.8rem; border-radius: 4px;">
+                                            👤 {{ p.user_name }} (Invites: <strong>{{ p.invite_count }} / {{ g.required_invites }}</strong>)
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
         </div>
     </div>
 </div>
