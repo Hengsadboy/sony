@@ -645,6 +645,42 @@ async def add_stock(
     return RedirectResponse(url="/settings", status_code=303)
 
 
+@app.post("/update-stock/{stock_id}")
+async def update_stock(
+    request: Request,
+    stock_id: int,
+    serial_id: int = Form(...),
+    account_number: str = Form(...),
+    login: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    try:
+        get_current_admin(request)
+    except HTTPException:
+        return RedirectResponse(url="/login", status_code=303)
+        
+    stock_item = db.query(AccountStock).filter(AccountStock.id == stock_id).first()
+    if not stock_item:
+        raise HTTPException(status_code=404, detail="Stock item not found")
+        
+    exists_serial = db.query(AccountStock).filter(AccountStock.serial_id == serial_id, AccountStock.id != stock_id).first()
+    if exists_serial:
+        return HTMLResponse(f"Serial ID {serial_id} is already in use by another stock account!", status_code=400)
+        
+    exists_number = db.query(AccountStock).filter(AccountStock.account_number == account_number.strip(), AccountStock.id != stock_id).first()
+    if exists_number:
+        return HTMLResponse(f"Account ID {account_number} is already in use by another stock account!", status_code=400)
+        
+    stock_item.serial_id = serial_id
+    stock_item.account_number = account_number.strip()
+    stock_item.login = login.strip()
+    stock_item.password = password.strip()
+    db.commit()
+    
+    return RedirectResponse(url="/settings", status_code=303)
+
+
 @app.post("/delete-stock/{stock_id}")
 async def delete_stock(
     request: Request,
