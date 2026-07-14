@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from database import get_db, init_db, User, TradingAccount, Transaction, PasswordResetRequest, SystemSetting, Giveaway, GiveawayParticipant, AccountStock, get_next_serial_id
+from database import get_db, init_db, SessionLocal, User, TradingAccount, Transaction, PasswordResetRequest, SystemSetting, Giveaway, GiveawayParticipant, AccountStock, get_next_serial_id
 from config import ADMIN_USERNAME, ADMIN_PASSWORD, TELEGRAM_BOT_TOKEN, UPLOAD_DIR, BASE_DIR
 from telegram import Bot
 import uvicorn
@@ -34,24 +34,37 @@ class DynamicBot:
 bot = DynamicBot()
 
 # Simple Mock Session store for Admin Login
-admin_sessions = set()
-
 # Helper to verify auth
 def get_current_admin(request: Request):
     session_token = request.cookies.get("admin_session")
-    if session_token not in admin_sessions:
+    if not session_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated"
         )
+    db = SessionLocal()
+    try:
+        setting = db.query(SystemSetting).filter(SystemSetting.key == "admin_session_token").first()
+        if not setting or setting.value != session_token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated"
+            )
+    finally:
+        db.close()
     return True
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    # Redirect to dashboard if logged in, else login page
     session_token = request.cookies.get("admin_session")
-    if session_token in admin_sessions:
-        return RedirectResponse(url="/dashboard", status_code=303)
+    if session_token:
+        db = SessionLocal()
+        try:
+            setting = db.query(SystemSetting).filter(SystemSetting.key == "admin_session_token").first()
+            if setting and setting.value == session_token:
+                return RedirectResponse(url="/dashboard", status_code=303)
+        finally:
+            db.close()
     return RedirectResponse(url="/login", status_code=303)
 
 @app.get("/login", response_class=HTMLResponse)
@@ -62,14 +75,23 @@ async def login_page(request: Request):
 async def login(
     request: Request,
     username: str = Form(...),
-    password: str = Form(...)
+    password: str = Form(...),
+    db: Session = Depends(get_db)
 ):
     if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+        import secrets
         response = RedirectResponse(url="/dashboard", status_code=303)
-        # Generate dummy session token
-        session_token = "secure_admin_session_token_12345"
-        admin_sessions.add(session_token)
-        response.set_cookie(key="admin_session", value=session_token, httponly=True)
+        session_token = secrets.token_hex(32)
+        
+        setting = db.query(SystemSetting).filter(SystemSetting.key == "admin_session_token").first()
+        if not setting:
+            setting = SystemSetting(key="admin_session_token")
+            db.add(setting)
+        setting.value = session_token
+        db.commit()
+        
+        # Max-age 30 days (2592000 seconds)
+        response.set_cookie(key="admin_session", value=session_token, httponly=True, max_age=2592000)
         return response
     
     return templates.TemplateResponse(
@@ -79,8 +101,12 @@ async def login(
     )
 
 @app.get("/logout")
-async def logout():
+async def logout(db: Session = Depends(get_db)):
     response = RedirectResponse(url="/login", status_code=303)
+    setting = db.query(SystemSetting).filter(SystemSetting.key == "admin_session_token").first()
+    if setting:
+        setting.value = ""
+        db.commit()
     response.delete_cookie("admin_session")
     return response
 
