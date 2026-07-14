@@ -368,13 +368,15 @@ def get_persistent_markup(lang):
         reply_keyboard = [
             ["📝 ចុះឈ្មោះគណនី", "ℹ️ ព័ត៌មានគណនី"],
             ["💰 ដាក់ប្រាក់", "💸 ដកប្រាក់"],
-            ["🔑 ភ្លេចលេខសម្ងាត់", "👥 ណែនាំមិត្តភក្តិ"]
+            ["🔑 ភ្លេចលេខសម្ងាត់", "👥 ណែនាំមិត្តភក្តិ"],
+            ["⚠️ គោលការណ៍ / Rules"]
         ]
     else:
         reply_keyboard = [
             ["📝 Register Account", "ℹ️ My Account Info"],
             ["💰 Deposit", "💸 Withdraw"],
-            ["🔑 Forgot Password", "👥 Invite Friends"]
+            ["🔑 Forgot Password", "👥 Invite Friends"],
+            ["⚠️ Rules / គោលការណ៍"]
         ]
     return ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True)
 
@@ -549,6 +551,65 @@ async def show_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await message_target.reply_text(info_text, reply_markup=reply_markup, parse_mode="Markdown")
     finally:
         db.close()
+
+
+async def show_rules(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if is_bot_under_maintenance():
+        message_target = update.message if update.message else update.callback_query.message
+        await message_target.reply_text(
+            "⚠️ *System Maintenance in Progress*\n\n"
+            "Our Telegram bot is currently undergoing maintenance/updates to improve our services.\n"
+            "All trading systems, deposits, and withdrawals remain safe. "
+            "Please try again in a little while! Thank you for your patience.",
+            parse_mode="Markdown"
+        )
+        if update.callback_query:
+            await update.callback_query.answer()
+        return
+
+    query = update.callback_query
+    if query:
+        await query.answer()
+        telegram_id = query.from_user.id
+        message_target = query.message
+    else:
+        telegram_id = update.effective_user.id
+        message_target = update.message
+
+    lang = get_user_lang(telegram_id, context)
+    
+    if lang == "km":
+        rules_text = (
+            "⚠️ *គោលការណ៍ណែនាំ និងលក្ខខណ្ឌសំខាន់ៗ (Trading Rules)*\n\n"
+            "សូមអាន និងគោរពតាមគោលការណ៍ខាងក្រោម ដើម្បីជៀសវាងការបាត់បង់គណនី ឬថវិការបស់អ្នក៖\n\n"
+            "1️⃣ *លក្ខខណ្ឌឈ្មោះគណនីធនាគារ (ABA Bank Name Rule):*\n"
+            "👉 ឈ្មោះដែលបានចុះឈ្មោះក្នុង Bot នេះ **ត្រូវតែដូចគ្នាទាំងស្រុង** ទៅនឹងឈ្មោះគណនីធនាគារ ABA របស់អ្នក។\n"
+            "🚨 *ប្រសិនបើឈ្មោះមិនត្រូវគ្នា:* រាល់ការដាក់ប្រាក់/ដកប្រាក់ **នឹងមិនមានការបង្វិលសងវិញឡើយ (NO REFUND)** ហើយសមតុល្យ (Balance) ទាំងអស់នឹងត្រូវបាត់បង់ទាំងស្រុង!\n\n"
+            "2️⃣ *ការកំណត់ចំនួនគណនីជួញដូរ:*\n"
+            "👉 សមាជិកម្នាក់ត្រូវបានអនុញ្ញាតឱ្យមានគណនីប្រភេទ *USD ១* និងគណនីប្រភេទ *Cent ១* តែប៉ុណ្ណោះ។ ការព្យាយាមបង្កើតគណនីច្រើនដើម្បីបន្លំ នឹងត្រូវហាមឃាត់ការប្រើប្រាស់ Bot ភ្លាមៗ។\n\n"
+            "3️⃣ *ការផ្ទៀងផ្ទាត់បង្កាន់ដៃដាក់ប្រាក់:*\n"
+            "👉 បង្កាន់ដៃទាំងអស់ត្រូវបានផ្ទៀងផ្ទាត់ដោយផ្ទាល់ពី Admin។ រាល់ការផ្ញើបង្កាន់ដៃក្លែងក្លាយ ឬការប្រើប្រាស់ឡើងវិញ នឹងត្រូវដកហូតគណនីជាអចិន្ត្រៃយ៍។\n\n"
+            "🤝 *ការចុះឈ្មោះប្រើប្រាស់ Bot នេះ មានន័យថាអ្នកបានអាន និងយល់ព្រមតាមលក្ខខណ្ឌទាំងអស់នេះ។*"
+        )
+    else:
+        rules_text = (
+            "⚠️ *Trading Platform Rules & Conditions*\n\n"
+            "Please read and follow these rules strictly to avoid account closure or loss of funds:\n\n"
+            "1️⃣ *Bank Account Name Verification (ABA Rule):*\n"
+            "👉 The name registered in this Telegram Bot **MUST EXACTLY MATCH** your ABA Bank account holder name.\n"
+            "🚨 *If the names do not match:* **NO REFUND** will be issued for any transaction, and your entire balance will be permanently forfeited (lost)!\n\n"
+            "2️⃣ *Trading Account Limits:*\n"
+            "👉 Each user is allowed a maximum of **1 USD account** and **1 Cent account**. Registering multiple accounts or abusing the system will result in an immediate ban.\n\n"
+            "3️⃣ *Deposit Receipt Verification:*\n"
+            "👉 All deposit slips/receipts are verified manually. Submitting fake screenshots, editing receipts, or reusing old receipts will lead to permanent ban.\n\n"
+            "🤝 *By using this bot, you acknowledge that you have read and agreed to all of the above terms.*"
+        )
+        
+    await message_target.reply_text(
+        rules_text,
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back / ត្រឡប់ក្រោយ", callback_data="btn_back")]]),
+        parse_mode="Markdown"
+    )
 
 
 async def invite_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1898,6 +1959,7 @@ def run_bot():
     
     # Basic Handlers
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("rules", show_rules))
     application.add_handler(CommandHandler("check_invite", invite_menu_handler))
     application.add_handler(CallbackQueryHandler(set_language, pattern="^lang_"))
     application.add_handler(CallbackQueryHandler(start, pattern="^btn_back$"))
@@ -1907,6 +1969,7 @@ def run_bot():
     application.add_handler(CallbackQueryHandler(delete_execute_callback, pattern="^del_execute:"))
     application.add_handler(MessageHandler(filters.Regex("^(ℹ️ My Account Info|ℹ️ ព័ត៌មានគណនី)$"), show_info))
     application.add_handler(MessageHandler(filters.Regex("^(👥 Invite Friends|👥 ណែនាំមិត្តភក្តិ)$"), invite_menu_handler))
+    application.add_handler(MessageHandler(filters.Regex("^(⚠️ Rules / គោលការណ៍|⚠️ គោលការណ៍ / Rules)$"), show_rules))
     
     # Add Conversations
     application.add_handler(reg_handler)
