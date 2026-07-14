@@ -269,12 +269,22 @@
                     <tbody>
                         {% for acc in all_accounts %}
                             <tr id="account-{{ acc.id }}">
-                                <td><code>{{ "%03d"|format(acc.serial_id) }}</code></td>
-                                <td>{{ acc.user.name }}</td>
+                                <td>
+                                    <input type="number" form="edit-account-form-{{ acc.id }}" name="serial_id" value="{{ acc.serial_id }}" class="form-input" style="width: 70px; padding: 0.2rem 0.4rem; margin: 0; font-size: 0.85rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white;" required>
+                                </td>
+                                <td>
+                                    <input type="text" form="edit-account-form-{{ acc.id }}" name="name" value="{{ acc.user.name }}" class="form-input" style="width: 140px; padding: 0.2rem 0.4rem; margin: 0; font-size: 0.85rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white;" required>
+                                </td>
                                 <td><code>{{ acc.user_telegram_id }}</code></td>
-                                <td><code>{{ acc.account_number }}</code></td>
-                                <td><code>{{ acc.login }}</code></td>
-                                <td><code>{{ acc.password }}</code></td>
+                                <td>
+                                    <input type="text" form="edit-account-form-{{ acc.id }}" name="account_number" value="{{ acc.account_number }}" class="form-input" style="width: 110px; padding: 0.2rem 0.4rem; margin: 0; font-size: 0.85rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white;" required>
+                                </td>
+                                <td>
+                                    <input type="text" form="edit-account-form-{{ acc.id }}" name="login" value="{{ acc.login }}" class="form-input" style="width: 140px; padding: 0.2rem 0.4rem; margin: 0; font-size: 0.85rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white;" required>
+                                </td>
+                                <td>
+                                    <input type="text" form="edit-account-form-{{ acc.id }}" name="password" value="{{ acc.password }}" class="form-input" style="width: 140px; padding: 0.2rem 0.4rem; margin: 0; font-size: 0.85rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white;" required>
+                                </td>
                                 <td>{{ acc.account_type }}</td>
                                 <td style="font-weight: 600; color: var(--accent-color);">${{ acc.balance }}</td>
                                 <td>
@@ -287,9 +297,12 @@
                                 <td>
                                     <button type="button" class="btn-primary" onclick="toggleHistory({{ acc.id }})" style="padding: 0.4rem 0.6rem; margin: 0; font-size: 0.8rem; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); color: white;">History 📜</button>
                                 </td>
-                                <td>
+                                <td style="white-space: nowrap;">
+                                    <form id="edit-account-form-{{ acc.id }}" action="/update-account/{{ acc.id }}" method="POST" style="margin: 0; display: inline;">
+                                        <button type="submit" class="btn-success" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; margin: 0 0.2rem 0 0;">Save 💾</button>
+                                    </form>
                                     <form action="/delete-account/{{ acc.id }}" method="POST" onsubmit="return confirm('Are you sure you want to delete trading account #{{ acc.account_number }}? All transactions for this account will be permanently deleted.');" style="display:inline;">
-                                        <button type="submit" class="btn-danger" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; font-weight: bold; background: var(--danger-color); border: none; border-radius: 6px; cursor: pointer; color: white;">Delete</button>
+                                        <button type="submit" class="btn-danger" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; font-weight: bold; background: var(--danger-color); border: none; border-radius: 6px; cursor: pointer; color: white; margin: 0;">Delete ❌</button>
                                     </form>
                                 </td>
                             </tr>

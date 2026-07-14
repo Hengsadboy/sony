@@ -1,0 +1,11 @@
+fastapi>=0.110.0
+uvicorn>=0.28.0
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+sqlalchemy>=2.0.0
+cryptography>=42.0.0
+
+# Note: MetaTrader5 is a Windows-only binary package.
+# In an Ubuntu production environment, install this dependency
+# inside the Wine Python prefix using the instructions in README.md.
+# MetaTrader5>=5.0.4500

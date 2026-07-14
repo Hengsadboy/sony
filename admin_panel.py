@@ -380,6 +380,41 @@ async def adjust_balance(
     return RedirectResponse(url="/dashboard", status_code=303)
 
 
+@app.post("/update-account/{acc_id}")
+async def update_account(
+    acc_id: int,
+    serial_id: int = Form(...),
+    name: str = Form(...),
+    account_number: str = Form(...),
+    login: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    acc = db.query(TradingAccount).filter(TradingAccount.id == acc_id).first()
+    if not acc:
+        raise HTTPException(status_code=404, detail="Account not found")
+        
+    exists_serial = db.query(TradingAccount).filter(TradingAccount.serial_id == serial_id, TradingAccount.id != acc_id).first()
+    if exists_serial:
+        return HTMLResponse(f"Serial ID {serial_id} is already in use by another active account!", status_code=400)
+        
+    exists_number = db.query(TradingAccount).filter(TradingAccount.account_number == account_number.strip(), TradingAccount.id != acc_id).first()
+    if exists_number:
+        return HTMLResponse(f"Account ID {account_number} is already in use by another active account!", status_code=400)
+        
+    acc.serial_id = serial_id
+    acc.account_number = account_number.strip()
+    acc.login = login.strip()
+    acc.password = password.strip()
+    
+    user = db.query(User).filter(User.telegram_id == acc.user_telegram_id).first()
+    if user:
+        user.name = name.strip()
+        
+    db.commit()
+    return RedirectResponse(url="/dashboard", status_code=303)
+
+
 @app.post("/delete-account/{acc_id}")
 async def delete_account(acc_id: int, db: Session = Depends(get_db)):
     acc = db.query(TradingAccount).filter(TradingAccount.id == acc_id).first()
